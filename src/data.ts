@@ -155,7 +155,8 @@ export const CRIT_MULT_UPGRADE: LeveledUpgrade = { id: 'critMult', name: '한 �
 
 /** 자동 생산 배수: 레벨당 ×1.2 (곱연산), 전설 단계부터 등장 */
 export const AUTO_MULT = { perLevel: 1.2, unlockStage: 5 };
-export const AUTO_MULT_UPGRADE: LeveledUpgrade = { id: 'autoMult', name: '전설의 기운', icon: '🌟', baseCost: 50_000_000, growth: 3 };
+/** 가격 증가 ×3 → ×1.5 로 완화 (2026-11-06 피드백) */
+export const AUTO_MULT_UPGRADE: LeveledUpgrade = { id: 'autoMult', name: '전설의 기운', icon: '🌟', baseCost: 50_000_000, growth: 1.5 };
 
 /** 오프라인 보상 최대 시간(초) */
 export const OFFLINE_CAP_SEC = 8 * 60 * 60;
