@@ -1,21 +1,38 @@
 import './style.css';
-import { EVENT, GENERATORS, STAGES, TAP_UPGRADE, type Expression } from './data';
+import {
+  AUTO_MULT,
+  AUTO_MULT_UPGRADE,
+  CRIT_CHANCE_UPGRADE,
+  CRIT_MULT_UPGRADE,
+  EVENT,
+  GENERATORS,
+  STAGES,
+  TAP_UPGRADE,
+  type Expression,
+  type LeveledUpgrade,
+} from './data';
 import { Scene } from './scene';
 import { isRotated, setupFullscreen } from './fullscreen';
 import { setupAutoUpdate } from './update';
 import { fmt, fmtDuration } from './format';
 import {
+  autoMultiplier,
   buyGenerator,
-  buyTapUpgrade,
+  buyUpgrade,
   checkEvolve,
+  critChance,
+  critMultiplier,
   earn,
   generatorCost,
+  isMaxed,
   load,
   powerPerSec,
   resetSave,
+  rollTap,
   save,
-  tapUpgradeCost,
   tapValue,
+  upgradeCost,
+  upgradeLevel,
 } from './state';
 
 const $ = <T extends HTMLElement>(id: string) => {
@@ -36,7 +53,10 @@ const ui = {
   arena: $('arena'),
   yeonsu: $<HTMLButtonElement>('yeonsu'),
   eventBubble: $<HTMLButtonElement>('event-bubble'),
-  shopList: $('shop-list'),
+  shopAuto: $('shop-auto'),
+  shopTap: $('shop-tap'),
+  tabAuto: $<HTMLButtonElement>('tab-auto'),
+  tabTap: $<HTMLButtonElement>('tab-tap'),
   resetBtn: $<HTMLButtonElement>('reset-btn'),
   fullscreenBtn: $<HTMLButtonElement>('fullscreen-btn'),
   fullscreenBig: $<HTMLButtonElement>('fullscreen-big'),
@@ -83,9 +103,9 @@ function nextModal() {
 ui.modalOk.addEventListener('click', nextModal);
 
 // ---------- 캐릭터 ----------
-function floatNumber(text: string, x: number, y: number) {
+function floatNumber(text: string, x: number, y: number, crit = false) {
   const el = document.createElement('div');
-  el.className = 'float-num';
+  el.className = crit ? 'float-num crit' : 'float-num';
   el.textContent = text;
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
@@ -93,24 +113,40 @@ function floatNumber(text: string, x: number, y: number) {
   el.addEventListener('animationend', () => el.remove());
 }
 
-function popAt(evt: PointerEvent | null, text: string) {
+function popAt(evt: PointerEvent | null, text: string, crit = false) {
   const w = ui.arena.offsetWidth;
   const h = ui.arena.offsetHeight;
-  if (!evt) return floatNumber(text, w / 2, h / 2);
+  if (!evt) return floatNumber(text, w / 2, h / 2, crit);
   const rect = ui.arena.getBoundingClientRect();
   // 강제 가로(90도 회전) 중이면 화면 좌표를 무대 좌표로 되돌린다: 무대 x축 = 화면 아래쪽, y축 = 화면 왼쪽
   const x = isRotated() ? evt.clientY - rect.top : evt.clientX - rect.left;
   const y = isRotated() ? rect.right - evt.clientX : evt.clientY - rect.top;
-  floatNumber(text, x, y - h * 0.05);
+  floatNumber(text, x, y - h * 0.05, crit);
 }
+
+/** 크리티컬 시 무대 흔들림 */
+function shake() {
+  ui.arena.classList.remove('shake');
+  void ui.arena.offsetWidth;
+  ui.arena.classList.add('shake');
+}
+ui.arena.addEventListener('animationend', (e) => {
+  if (e.target === ui.arena) ui.arena.classList.remove('shake');
+});
 
 const TAP_EXPRESSIONS: Expression[] = ['happy', 'happy', 'surprised', 'pout'];
 ui.yeonsu.addEventListener('pointerdown', (evt) => {
-  const v = tapValue(state);
-  earn(state, v);
-  popAt(evt, `+${fmt(v)}`);
+  const { value, crit } = rollTap(state);
+  earn(state, value);
   scene.squish();
-  if (Math.random() < 0.35) scene.showExpression(TAP_EXPRESSIONS[Math.floor(Math.random() * TAP_EXPRESSIONS.length)]);
+  if (crit) {
+    popAt(evt, `크리티컬! +${fmt(value)}`, true);
+    shake();
+    scene.showExpression('surprised');
+  } else {
+    popAt(evt, `+${fmt(value)}`);
+    if (Math.random() < 0.35) scene.showExpression(TAP_EXPRESSIONS[Math.floor(Math.random() * TAP_EXPRESSIONS.length)]);
+  }
   afterGain();
 });
 
@@ -140,7 +176,25 @@ interface ShopRow {
   owned: HTMLElement;
 }
 
-function makeRow(onBuy: () => void): ShopRow {
+// 탭: 자동 생산 / 클릭 강화
+type TabId = 'auto' | 'tap';
+let activeTab: TabId = 'auto';
+const tabs: Record<TabId, { btn: HTMLButtonElement; list: HTMLElement }> = {
+  auto: { btn: ui.tabAuto, list: ui.shopAuto },
+  tap: { btn: ui.tabTap, list: ui.shopTap },
+};
+function selectTab(id: TabId) {
+  activeTab = id;
+  for (const [k, t] of Object.entries(tabs) as [TabId, (typeof tabs)[TabId]][]) {
+    t.btn.classList.toggle('active', k === id);
+    t.list.classList.toggle('hidden', k !== id);
+  }
+  tabs[id].btn.classList.remove('has-new');
+}
+ui.tabAuto.addEventListener('click', () => selectTab('auto'));
+ui.tabTap.addEventListener('click', () => selectTab('tap'));
+
+function makeRow(tab: TabId, onBuy: () => void): ShopRow & { tab: TabId } {
   const btn = document.createElement('button');
   btn.className = 'shop-item hidden';
   btn.innerHTML = `
@@ -148,24 +202,31 @@ function makeRow(onBuy: () => void): ShopRow {
     <div class="shop-info"><div class="shop-name"></div><div class="shop-sub"></div></div>
     <div class="shop-right"><div class="shop-cost"></div><div class="shop-owned"></div></div>`;
   btn.addEventListener('click', onBuy);
-  ui.shopList.appendChild(btn);
+  tabs[tab].list.appendChild(btn);
   const q = (sel: string) => btn.querySelector(sel) as HTMLElement;
   btn.addEventListener('animationend', () => btn.classList.remove('appear', 'unlock'));
-  return { btn, shown: false, wasLocked: true, icon: q('.shop-icon'), name: q('.shop-name'), sub: q('.shop-sub'), cost: q('.shop-cost'), owned: q('.shop-owned') };
+  return { tab, btn, shown: false, wasLocked: true, icon: q('.shop-icon'), name: q('.shop-name'), sub: q('.shop-sub'), cost: q('.shop-cost'), owned: q('.shop-owned') };
 }
 
-const tapRow = makeRow(() => {
-  if (buyTapUpgrade(state)) render();
-});
-tapRow.icon.textContent = TAP_UPGRADE.icon;
-tapRow.name.textContent = TAP_UPGRADE.name;
+function makeUpgradeRow(tab: TabId, u: LeveledUpgrade) {
+  const row = makeRow(tab, () => {
+    if (buyUpgrade(state, u)) render();
+  });
+  row.icon.textContent = u.icon;
+  row.name.textContent = u.name;
+  return row;
+}
 
 const genRows = GENERATORS.map((g) => {
-  const row = makeRow(() => {
+  const row = makeRow('auto', () => {
     if (buyGenerator(state, g)) render();
   });
   return { g, row };
 });
+const autoMultRow = makeUpgradeRow('auto', AUTO_MULT_UPGRADE);
+const tapRow = makeUpgradeRow('tap', TAP_UPGRADE);
+const critChanceRow = makeUpgradeRow('tap', CRIT_CHANCE_UPGRADE);
+const critMultRow = makeUpgradeRow('tap', CRIT_MULT_UPGRADE);
 
 // ---------- 배고픈 연수 이벤트 ----------
 let nextEventAt = 0;
@@ -186,16 +247,31 @@ ui.eventBubble.addEventListener('pointerdown', (evt) => {
 });
 
 // ---------- 상점 순차 등장 ----------
-let revealOrder = 0;
+const revealOrder: Record<TabId, number> = { auto: 0, tap: 0 };
 let initialReveal = true;
 /** 행이 처음 보일 때 아래에서 튀어나오는 연출. 첫 화면에서는 순서대로 시차를 둔다 */
-function reveal(row: ShopRow) {
+function reveal(row: ShopRow & { tab: TabId }) {
   if (row.shown) return;
   row.shown = true;
   row.btn.classList.remove('hidden');
-  row.btn.style.animationDelay = initialReveal ? `${revealOrder++ * 110}ms` : '0ms';
+  row.btn.style.animationDelay = initialReveal ? `${revealOrder[row.tab]++ * 110}ms` : '0ms';
   row.btn.classList.add('appear');
+  // 다른 탭에 새 항목이 생기면 빨간 점 (첫 화면 제외)
+  if (!initialReveal && row.tab !== activeTab) tabs[row.tab].btn.classList.add('has-new');
 }
+
+/** 레벨형 업그레이드 카드 갱신 */
+function renderUpgrade(row: ShopRow, u: LeveledUpgrade, sub: string) {
+  const lv = upgradeLevel(state, u);
+  const maxed = isMaxed(state, u);
+  const cost = upgradeCost(state, u);
+  row.sub.textContent = sub;
+  row.cost.textContent = maxed ? 'MAX' : `💪 ${fmt(cost)}`;
+  row.owned.textContent = lv > 0 ? `Lv.${lv}` : '';
+  row.btn.disabled = maxed || state.power < cost;
+}
+
+const pct = (r: number) => `${Math.round(r * 100)}%`;
 
 // ---------- 렌더 ----------
 function render() {
@@ -217,12 +293,16 @@ function render() {
     ui.progressLabel.textContent = '최종 단계 도달!';
   }
 
-  const tc = tapUpgradeCost(state);
-  tapRow.btn.disabled = state.power < tc;
-  tapRow.sub.textContent = '탭 +1';
-  tapRow.cost.textContent = `💪 ${fmt(tc)}`;
-  tapRow.owned.textContent = state.tapLevel > 0 ? `Lv.${state.tapLevel}` : '';
+  // 클릭 강화 탭
+  renderUpgrade(tapRow, TAP_UPGRADE, '탭 +1');
   reveal(tapRow);
+  renderUpgrade(critChanceRow, CRIT_CHANCE_UPGRADE, `크리 확률 ${pct(critChance(state))}`);
+  reveal(critChanceRow);
+  // 한 방의 힘은 급소 찌르기를 한 번 산 뒤 등장
+  if (state.critChanceLevel > 0) {
+    renderUpgrade(critMultRow, CRIT_MULT_UPGRADE, `크리 배율 ×${critMultiplier(state).toFixed(1)}`);
+    reveal(critMultRow);
+  }
 
   // 열린 항목 + 다음 잠긴 항목 1개(???)까지만 보여준다
   let teaserShown = false;
@@ -245,6 +325,11 @@ function render() {
     row.cost.textContent = `💪 ${fmt(cost)}`;
     row.owned.textContent = owned > 0 ? `${owned}` : '';
     row.btn.disabled = locked || state.power < cost;
+  }
+  // 전설의 기운은 전설 단계부터 등장
+  if (state.stage >= AUTO_MULT.unlockStage) {
+    renderUpgrade(autoMultRow, AUTO_MULT_UPGRADE, `자동 생산 ×${autoMultiplier(state).toFixed(2)}`);
+    reveal(autoMultRow);
   }
   initialReveal = false;
 }

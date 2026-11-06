@@ -52,7 +52,14 @@
         <button class="event-bubble hidden" id="event-bubble">🍗 배고파요! 눌러주세요</button>
 
         <!-- 키우기 버튼 (하단, 열리는 순서대로 등장) -->
-        <div class="shop-bar" id="shop-list"></div>
+        <div class="shop-bar">
+          <div class="shop-tabs">
+            <button class="shop-tab active" id="tab-auto">자동 생산<span class="tab-dot"></span></button>
+            <button class="shop-tab" id="tab-tap">클릭 강화<span class="tab-dot"></span></button>
+          </div>
+          <div class="shop-list" id="shop-auto"></div>
+          <div class="shop-list hidden" id="shop-tap"></div>
+        </div>
       </section>
     </div>
     <!-- 세로 휴대폰에서만 보이는 큰 전체화면 버튼 -->

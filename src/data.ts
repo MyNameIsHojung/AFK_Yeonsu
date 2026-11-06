@@ -109,8 +109,39 @@ export const GENERATORS: Generator[] = [
 
 export const COST_GROWTH = 1.15;
 
-/** 탭 강화: 레벨당 탭 기본값 +1, 가격은 growth 배씩 증가 */
-export const TAP_UPGRADE = { name: '손가락 단련', icon: '👆', baseCost: 50, growth: 2.2 };
+/** 레벨형 업그레이드. 가격 = baseCost × growth^현재레벨 */
+export interface LeveledUpgrade {
+  id: UpgradeId;
+  name: string;
+  icon: string;
+  baseCost: number;
+  growth: number;
+  maxLevel?: number;
+}
+export type UpgradeId = 'tap' | 'critChance' | 'critMult' | 'autoMult';
+
+/** 탭 강화: 레벨당 탭 기본값 +1 */
+export const TAP_UPGRADE: LeveledUpgrade = { id: 'tap', name: '손가락 단련', icon: '👆', baseCost: 50, growth: 2.2 };
+
+/** 크리티컬: 기본 확률 5%, 크리티컬 시 ×1.2 */
+export const CRIT = {
+  baseChance: 0.05,
+  chancePerLevel: 0.01,
+  maxChance: 0.5,
+  baseMult: 1.2,
+  multPerLevel: 0.1,
+};
+/** 크리티컬 확률 +1%p / 레벨 (최대 50% → 45레벨) */
+export const CRIT_CHANCE_UPGRADE: LeveledUpgrade = {
+  id: 'critChance', name: '급소 찌르기', icon: '🎯', baseCost: 100, growth: 1.6,
+  maxLevel: Math.round((CRIT.maxChance - CRIT.baseChance) / CRIT.chancePerLevel),
+};
+/** 크리티컬 배율 +0.1 / 레벨 */
+export const CRIT_MULT_UPGRADE: LeveledUpgrade = { id: 'critMult', name: '한 방의 힘', icon: '💥', baseCost: 200, growth: 1.8 };
+
+/** 자동 생산 배수: 레벨당 ×1.2 (곱연산), 전설 단계부터 등장 */
+export const AUTO_MULT = { perLevel: 1.2, unlockStage: 5 };
+export const AUTO_MULT_UPGRADE: LeveledUpgrade = { id: 'autoMult', name: '전설의 기운', icon: '🌟', baseCost: 50_000_000, growth: 3 };
 
 /** 오프라인 보상 최대 시간(초) */
 export const OFFLINE_CAP_SEC = 8 * 60 * 60;
