@@ -1,0 +1,31 @@
+---
+type: reference
+status: in_progress
+updated_at: 2026-11-06
+---
+
+# Agent Session History
+
+## 2026-11-06 — Claude Code (Opus 5.5)
+- 계획: `docs/plans/afkYeonsuPlan.md` 승인 후 구현 시작
+- 완료: Vite + TS 웹 게임 골격 (탭, 업그레이드 7종, 6단계 진화, 오프라인 보상 8h, 배고픈 연수 이벤트, localStorage 저장)
+- 이미지: `scripts/genImages.sh` (codex exec + base_img 첨부) 로 `stage1.png` 시범 생성 → 게임 연결 완료
+- 결정: 배경은 투명 대신 게임 배경색(#FFF6EC) 단색으로 생성 (이미지 생성 투명도 불안정 회피)
+- 완료: stage2~6, 표정 3종 Codex 일괄 생성 (장당 약 50초) → `src/data.ts` 경로 교체, 이미지 프리로드 추가
+- 변경: 표정을 단계별로 재생성 (6단계 × 3표정 = 18장, stageN.png 첨부로 의상/포즈 유지) → 후드티 공통 표정 `expr_*.png` 및 placeholder 이미지는 삭제함
+- 변경: 패키지 매니저 npm → pnpm (package-lock.json 제거, pnpm-lock.yaml 사용, 실행: `pnpm dev`)
+- 추가: 단계별 집 배경 6장 (`public/assets/bg/room1~6.png`, `scripts/genBackgrounds.sh`)
+- 추가: 캐릭터 투명화 — 1~5단계 `scripts/removeBg.py` (가장자리 flood-fill, 갇힌 구멍은 유지), 6단계는 Codex 투명 배경 재생성 (오라 제거 → CSS 금빛 오라)
+- 추가: 프레임 애니메이션 — 단계별 blink/act 12장, `IDLE_SEQUENCE` (src/data.ts) 로 재생, `src/scene.ts` 가 장면 담당
+- 추가: 배경 효과 — 방 크로스페이드, 느린 카메라 드리프트, 먼지 입자, 햇살, 현실 시간대 색감(multiply), 스탠드 불빛/컵라면 김/반짝이, 진화 점프
+- 참고: removeBg.py 실행은 pillow/numpy/scipy 필요 (스크래치 venv 사용, 프로젝트 의존성 아님)
+- 참고: Codex 이미지 생성이 아기 젖병 프레임에서 moderation 오탐(sexual)으로 1회 거절 → Codex 가 자동 재시도해 생성됨
+- 변경: 장면 16:9 (정사각 배경을 background-position-y 58% 로 크롭, 효과 레이어도 같은 기준으로 정렬), 앱 최대 폭 760px
+- 변경: 성장 지수(단계/연수력/진행도)를 장면 상단 오버레이로 이동, 별도 단계 카드 제거
+- 변경: 키우기 버튼 순차 등장 — 열린 항목 + 다음 잠긴 항목(???) 1개만 표시, 첫 화면은 110ms 시차로 차례로 등장, 잠금 해제 시 반짝 연출, 넓은 화면 2열 그리드
+- 변경: 게임 전체를 화면에 맞춘 16:9 무대로 재구성 (`#app` = min(100vw, 100dvh×16/9), 나머지는 레터박스, 스크롤 없음)
+  - 내부 크기는 모두 cqw(무대 폭 기준) 단위 → 화면 크기와 무관하게 같은 배치
+  - 키우기 버튼은 무대 하단 가로 바(카드 7개)로 이동, 미니 HUD 제거, 리셋 버튼은 상단 ↺
+  - 세로 휴대폰은 무대가 작아 "가로로 돌리면…" 안내 표시
+- 추가: 방 돌아다니기 — 2.5~6초 쉬고 무대 폭 20~80% 사이 목적지로 총총 걸음(0.3초 통통 + 뒤뚱), 방향 따라 좌우 반전, 뒤쪽일수록 작고 높게(원근), 설정은 `WANDER` (src/data.ts)
+- 남은 작업: 밸런스 조정, 밤 시간대 색감 실제 화면 확인

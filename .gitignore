@@ -1,0 +1,9 @@
+node_modules
+dist
+.DS_Store
+
+# 원본 얼굴 사진: 공개 저장소에 올리지 않음 (Codex 이미지 생성용으로만 로컬 사용)
+base_img/
+
+# 로컬 개발 도구 설정
+.claude/

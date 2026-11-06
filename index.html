@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>방치형 연수 키우기</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- 게임 무대: 화면 크기에 맞춰 16:9 로 꽉 차게 (남는 부분은 레터박스) -->
+    <div id="app">
+      <section class="scene" id="arena">
+        <div class="room" id="room-a"></div>
+        <div class="room" id="room-b"></div>
+        <div class="fx-sunbeam" id="fx-sunbeam"></div>
+        <div class="fx-tint" id="fx-tint"></div>
+        <div class="fx-layer" id="fx-room"></div>
+        <div class="fx-layer" id="fx-dust"></div>
+
+        <!-- 성장 지수 (상단) -->
+        <div class="scene-top">
+          <div class="top-row">
+            <div class="stage-chip">
+              <span class="stage-badge" id="stage-level">Lv.1</span>
+              <span class="stage-name" id="stage-name">아기 연수</span>
+              <span class="stage-desc" id="stage-desc"></span>
+            </div>
+            <div class="power-chip">
+              <div class="power">💪 <span id="power">0</span></div>
+              <div class="pps">초당 <span id="pps">0</span> · 탭 <span id="tap">1</span></div>
+            </div>
+            <button id="reset-btn" class="reset-btn" title="처음부터 다시하기" aria-label="처음부터 다시하기">↺</button>
+          </div>
+          <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+          <div class="progress-label" id="progress-label"></div>
+        </div>
+
+        <div class="char-wrap" id="char-wrap">
+          <div class="char-shadow"></div>
+          <div class="hop">
+            <button class="yeonsu" id="yeonsu" aria-label="연수 쓰다듬기">
+              <div class="sprite" id="sprite"></div>
+            </button>
+          </div>
+        </div>
+        <button class="event-bubble hidden" id="event-bubble">🍗 배고파요! 눌러주세요</button>
+
+        <!-- 키우기 버튼 (하단, 열리는 순서대로 등장) -->
+        <div class="shop-bar" id="shop-list"></div>
+      </section>
+    </div>
+    <div class="rotate-hint">📱 가로로 돌리면 더 크게 볼 수 있어요</div>
+
+    <div class="modal hidden" id="modal">
+      <div class="modal-card">
+        <img id="modal-img" class="modal-img hidden" alt="" />
+        <h3 id="modal-title"></h3>
+        <p id="modal-body"></p>
+        <button id="modal-ok" class="primary-btn">확인</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
