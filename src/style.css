@@ -263,9 +263,19 @@ button {
   border-radius: 999px;
   white-space: nowrap;
 }
+/* 환생 버튼: 아이콘만이면 눈에 안 띄어서 글자 포함 알약 모양 */
 .rebirth-btn {
-  background: linear-gradient(135deg, #a78bfa, #f472b6) !important;
-  color: #fff !important;
+  pointer-events: auto;
+  flex-shrink: 0;
+  border: none;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  color: #fff;
+  font-size: max(1.5cqw, 13px);
+  height: max(2.8cqw, 28px);
+  padding: 0 max(1.2cqw, 10px);
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 0.3cqw 0 #a21caf;
   animation: rebirth-pulse 1.6s ease-in-out infinite;
 }
 @keyframes rebirth-pulse {

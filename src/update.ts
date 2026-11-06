@@ -1,33 +1,42 @@
 // 새 버전 자동 감지.
-// GitHub Pages 는 HTML 을 10분간 캐시(max-age=600)해서 배포 후에도 예전 화면이 뜰 수 있다.
-// 서버의 version.json 을 캐시 없이 읽어 내 빌드 ID 와 다르면, 캐시를 피하는 새 주소(?v=빌드ID)로 다시 연다.
+// GitHub Pages 는 HTML·version.json 을 CDN 에서 최대 10분(max-age=600) 캐시하고, 쿼리스트링(?v=)도 캐시 키에서 무시한다.
+// 그래서 "version.json 이 새 버전" + "지금 받은 index.html 이 새 번들을 가리킴" 을 둘 다 확인한 뒤에만 새로고침한다.
+// CDN 이 아직 예전 HTML 을 주면 새로고침하지 않고 다음 확인 때 다시 본다 (예전엔 한 번 실패하면 그 세션 동안 멈춰 있었음).
 
-const CHECK_INTERVAL_MS = 5 * 60 * 1000;
-const GUARD_KEY = 'afk-yeonsu-update-tried';
+const CHECK_INTERVAL_MS = 60 * 1000;
+const BASE = import.meta.env.BASE_URL;
 
+/** 현재 실행 중인 번들 파일명 (예: assets/index-AbC123.js) */
+function currentBundle(): string | null {
+  const s = document.querySelector<HTMLScriptElement>('script[type="module"][src*="assets/index-"]');
+  return s?.getAttribute('src')?.match(/assets\/index-[\w-]+\.js/)?.[0] ?? null;
+}
+
+let checking = false;
 async function check() {
-  let latest: string;
+  if (checking) return;
+  checking = true;
   try {
-    const res = await fetch(`${import.meta.env.BASE_URL}version.json?t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(`${BASE}version.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return;
-    latest = ((await res.json()) as { build: string }).build;
+    const latest = ((await res.json()) as { build: string }).build;
+    if (latest === __BUILD_ID__) return;
+
+    // 서버가 실제로 새 HTML 을 주는지 확인 (CDN 반영 전이면 다음 확인으로 미룸)
+    const html = await (await fetch(`${BASE}?t=${Date.now()}`, { cache: 'no-store' })).text();
+    const served = html.match(/assets\/index-[\w-]+\.js/)?.[0];
+    const mine = currentBundle();
+    if (!served || !mine || served === mine) return;
+
+    // 진행 상황은 beforeunload 에서 저장된다 (main.ts). ?v= 는 브라우저 캐시를 피하는 용도
+    const url = new URL(location.href);
+    url.searchParams.set('v', latest);
+    location.replace(url.toString());
   } catch (e) {
     console.warn('버전 확인 실패', e);
-    return;
+  } finally {
+    checking = false;
   }
-  if (latest === __BUILD_ID__) return;
-
-  // 같은 버전으로 이미 한 번 시도했는데도 예전 것이 뜨면(CDN 반영 지연) 반복하지 않는다
-  try {
-    if (sessionStorage.getItem(GUARD_KEY) === latest) return;
-    sessionStorage.setItem(GUARD_KEY, latest);
-  } catch {
-    // 저장소를 못 쓰는 환경이면 가드 없이 진행
-  }
-  // 진행 상황은 beforeunload 에서 저장된다 (main.ts)
-  const url = new URL(location.href);
-  url.searchParams.set('v', latest);
-  location.replace(url.toString());
 }
 
 export function setupAutoUpdate() {
