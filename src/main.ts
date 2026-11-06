@@ -48,6 +48,7 @@ import {
   petPokeIntervalSec,
   petMultiplier,
   petStage,
+  petTreasureSeconds,
   petTreasureValue,
   powerPerSec,
   resetSave,
@@ -265,7 +266,7 @@ function checkPetStage(animate: boolean) {
   if (prev < 0) {
     showModal('🐶 탱이가 집에 왔어요!', '연수 옆을 졸졸 따라다녀요.\n간식을 주면 쑥쑥 자라요.', petFrameImg(k, 'happy'), STAGES[state.stage].room);
   } else {
-    showModal(`🐶 ${ps.name}(으)로 성장!`, '탱이 능력이 ×1.5 강해졌어요.', petFrameImg(k, 'happy'), STAGES[state.stage].room);
+    showModal(`🐶 ${ps.name}(으)로 성장!`, `꼬리 콕콕이 더 세지고(×${petMultiplier(state).toFixed(2)}) 보물이 더 커졌어요.`, petFrameImg(k, 'happy'), STAGES[state.stage].room);
   }
 }
 
@@ -502,10 +503,18 @@ function render() {
     feedQtyChip.textContent = feedQty === 'max' ? `최대 ${n}` : `×${feedQty}`;
     reveal(petFeedRow);
     const interval = petPokeIntervalSec(state);
-    renderUpgrade(petPokeRow, PET_POKE_UPGRADE, interval === null ? `${PET.pokeBaseSec}초마다 자동 탭` : `${interval.toFixed(1)}초마다 자동 탭`);
+    renderUpgrade(
+      petPokeRow,
+      PET_POKE_UPGRADE,
+      interval === null ? `${PET.pokeBaseSec}초마다 자동 탭` : `${interval.toFixed(1)}초마다 탭×${petMultiplier(state).toFixed(2)}`,
+    );
     reveal(petPokeRow);
     if (state.petLevel >= PET_UNLOCK.treasureLevel || state.petTreasureLevel > 0) {
-      renderUpgrade(petTreasureRow, PET_TREASURE_UPGRADE, `${PET.treasureIntervalSec}초마다 보물`);
+      renderUpgrade(
+        petTreasureRow,
+        PET_TREASURE_UPGRADE,
+        state.petTreasureLevel > 0 ? `${PET.treasureIntervalSec}초마다 생산 ${Math.round(petTreasureSeconds(state))}초치` : `${PET.treasureIntervalSec}초마다 보물`,
+      );
       reveal(petTreasureRow);
     }
     if (state.petLevel >= PET_UNLOCK.friendLevel || state.petFriendLevel > 0) {

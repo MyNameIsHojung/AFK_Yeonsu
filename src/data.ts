@@ -213,20 +213,22 @@ export const PET_STAGES: PetStage[] = [
 ];
 
 export const PET = {
-  /** 진화 1단계마다 탱이 능력 ×1.5 */
-  evolveMult: 1.5,
-  /** 탱이 레벨당 탱이 능력 +1% (레벨이 수천까지 올라가므로 +5% → +1%) */
-  levelBonus: 0.01,
+  /** 탱이 힘 = (1 + 진화단계 × 0.25) × (1 + 레벨 × 0.0005)  — 최종(9단계, Lv.6561) 약 ×12.8
+   *  (이전: ×1.5^단계 × (1 + 레벨 1%) 는 후반에 ×180 이상으로 폭주해서 보물이 몇 조씩 나왔음) */
+  evolveBonus: 0.25,
+  levelBonus: 0.0005,
   /** 탱이를 직접 탭했을 때: 연수 탭 값의 50% */
   tapShare: 0.5,
   /** 꼬리 콕콕: Lv.1 에 4초, 레벨당 -0.3초, 최소 1초 */
   pokeBaseSec: 4,
   pokeStepSec: 0.3,
   pokeMinSec: 1,
-  /** 보물 찾기: 60초마다 초당 생산량 × (20 + 10×레벨)초 */
+  /** 보물 찾기: 60초마다 초당 생산량 × (10 + 5×레벨)초 × (1 + 진화단계 × 0.1)
+   *  탱이 힘 전체를 곱하지 않음 — 보물은 "생산 몇 초 분량" 으로 묶어 둬야 생산 대비 폭주하지 않는다 */
   treasureIntervalSec: 60,
-  treasureBaseSec: 20,
-  treasureStepSec: 10,
+  treasureBaseSec: 10,
+  treasureStepSec: 5,
+  treasureStageBonus: 0.1,
   /** 우정: 모든 생산량 +10% / 레벨 (더하기, 탱이 성장 배수와 무관) */
   friendPerLevel: 0.1,
   /** 화면: 탱이 폭(cqw, 성체 기준)과 연수와의 간격(무대 폭 %) */

@@ -111,9 +111,9 @@ export function petStage(s: GameState): number {
   return Math.min(k, s.stage);
 }
 
-/** 탱이 능력 배수: 레벨당 +5%, 진화 단계당 ×1.5 */
+/** 탱이 힘 (꼬리 콕콕 배수): 진화 단계당 +25%, 레벨당 +0.05% */
 export function petMultiplier(s: GameState): number {
-  return (1 + s.petLevel * PET.levelBonus) * Math.pow(PET.evolveMult, Math.max(0, petStage(s)));
+  return (1 + Math.max(0, petStage(s)) * PET.evolveBonus) * (1 + s.petLevel * PET.levelBonus);
 }
 
 /** 꼬리 콕콕 간격(초). 미구매면 null */
@@ -123,8 +123,13 @@ export function petPokeIntervalSec(s: GameState): number | null {
 }
 
 /** 보물 1개의 가치 */
+/** 보물 1개 = 초당 생산량의 몇 초 분량인지 */
+export function petTreasureSeconds(s: GameState): number {
+  return (PET.treasureBaseSec + PET.treasureStepSec * s.petTreasureLevel) * (1 + Math.max(0, petStage(s)) * PET.treasureStageBonus);
+}
+
 export function petTreasureValue(s: GameState): number {
-  return powerPerSec(s) * (PET.treasureBaseSec + PET.treasureStepSec * s.petTreasureLevel) * petMultiplier(s);
+  return powerPerSec(s) * petTreasureSeconds(s);
 }
 
 export function critChance(s: GameState): number {
