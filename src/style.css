@@ -333,7 +333,7 @@ button {
   bottom: 10.5cqw;
   width: 26cqw;
   transform: translateX(-50%);
-  z-index: 3;
+  z-index: 4;
 }
 /* 방 돌아다니기: 위치(left/bottom/width)는 scene.ts 가 매 프레임 갱신 */
 .hop {
@@ -341,7 +341,8 @@ button {
   transform-origin: 50% 96%;
 }
 /* 총총 걸음: 짧게 통통 튀면서 좌우로 살짝 뒤뚱 */
-.char-wrap.walking .hop {
+.char-wrap.walking .hop,
+.pet-wrap.walking .hop {
   animation: hop 0.3s ease-in-out infinite alternate;
 }
 @keyframes hop {
@@ -349,7 +350,8 @@ button {
   50% { transform: translateY(-6%) rotate(0deg); }
   100% { transform: translateY(0) rotate(4deg); }
 }
-.char-wrap.walking .char-shadow {
+.char-wrap.walking .char-shadow,
+.pet-wrap.walking .char-shadow {
   animation: shadow-hop 0.3s ease-in-out infinite alternate;
 }
 @keyframes shadow-hop {
@@ -357,8 +359,31 @@ button {
   50% { transform: scaleX(0.8); opacity: 0.7; }
 }
 /* 왼쪽으로 갈 때 좌우 반전 */
-.char-wrap.facing-left .sprite img {
+.char-wrap.facing-left .sprite img,
+.pet-wrap.facing-right .sprite img {
   transform: scaleX(-1);
+}
+/* 탱이: 연수보다 뒤 레이어, 같은 바닥선 */
+.pet-wrap {
+  position: absolute;
+  left: 30%;
+  bottom: 10.5cqw;
+  width: 15cqw;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+.pet-wrap.jump {
+  animation: evolve-jump 0.8s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.pet {
+  position: relative;
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  transform-origin: 50% 96%;
+  animation: breathe 2.2s ease-in-out infinite;
 }
 .char-wrap.jump {
   animation: evolve-jump 0.8s cubic-bezier(0.3, 1.6, 0.5, 1);
@@ -450,6 +475,11 @@ button {
 }
 
 /* 크리티컬 숫자: 크게, 빨갛게, 튀어오르며 */
+/* 탱이 관련 숫자 (보물·하트) */
+.float-num.pet-fx {
+  color: #d9488a;
+  white-space: nowrap;
+}
 .float-num.crit {
   font-size: 3.6cqw;
   color: #f0443a;
@@ -506,17 +536,17 @@ button {
 .shop-tabs {
   display: flex;
   flex-direction: column;
-  gap: 0.5cqw;
+  gap: 0.4cqw;
   flex: 0 0 7.6cqw;
 }
 .shop-tab {
   position: relative;
   flex: 1;
   border: none;
-  border-radius: 1.2cqw;
+  border-radius: 1cqw;
   background: rgba(255, 255, 255, 0.6);
   color: var(--muted);
-  font-size: 1.2cqw;
+  font-size: 1.1cqw;
   padding: 0 0.4cqw;
   box-shadow: 0 0.3cqw 0 rgba(234, 216, 198, 0.8);
   white-space: nowrap;
@@ -698,7 +728,10 @@ button {
   .yeonsu,
   .char-shadow,
   .char-wrap.walking .hop,
-  .char-wrap.walking .char-shadow {
+  .char-wrap.walking .char-shadow,
+  .pet,
+  .pet-wrap.walking .hop,
+  .pet-wrap.walking .char-shadow {
     animation: none;
   }
 }

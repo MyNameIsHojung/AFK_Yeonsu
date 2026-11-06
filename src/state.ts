@@ -4,6 +4,8 @@ import {
   CRIT,
   GENERATORS,
   OFFLINE_CAP_SEC,
+  PET,
+  PET_STAGES,
   STAGES,
   STAGE_BONUS_PER_LEVEL,
   type Generator,
@@ -20,6 +22,12 @@ export interface GameState {
   critChanceLevel: number;
   critMultLevel: number;
   autoMultLevel: number;
+  /** 탱이: 입양 여부(0/1), 레벨, 능력 레벨 */
+  petAdopted: number;
+  petLevel: number;
+  petPokeLevel: number;
+  petTreasureLevel: number;
+  petFriendLevel: number;
   owned: Record<string, number>;
   stage: number;
   lastSaved: number;
@@ -33,6 +41,11 @@ export function newState(): GameState {
     critChanceLevel: 0,
     critMultLevel: 0,
     autoMultLevel: 0,
+    petAdopted: 0,
+    petLevel: 0,
+    petPokeLevel: 0,
+    petTreasureLevel: 0,
+    petFriendLevel: 0,
     owned: Object.fromEntries(GENERATORS.map((g) => [g.id, 0])),
     stage: 0,
     lastSaved: Date.now(),
@@ -48,14 +61,44 @@ export function autoMultiplier(s: GameState): number {
   return Math.pow(AUTO_MULT.perLevel, s.autoMultLevel);
 }
 
+/** 탱이 우정: 모든 생산량 배수 */
+export function friendMultiplier(s: GameState): number {
+  return 1 + s.petFriendLevel * PET.friendPerLevel;
+}
+
 export function powerPerSec(s: GameState): number {
   const base = GENERATORS.reduce((sum, g) => sum + g.pps * (s.owned[g.id] ?? 0), 0);
-  return base * stageMultiplier(s) * autoMultiplier(s);
+  return base * stageMultiplier(s) * autoMultiplier(s) * friendMultiplier(s);
 }
 
 export function tapValue(s: GameState): number {
-  // 탭은 기본값 + 초당 생산량의 2% 를 함께 준다 (후반에도 탭이 의미 있도록)
-  return (1 + s.tapLevel) * stageMultiplier(s) + powerPerSec(s) * 0.02;
+  // 탭은 기본값 + 초당 생산량의 2% 를 함께 준다 (후반에도 탭이 의미 있도록). pps 에는 이미 우정 배수가 들어 있음
+  return (1 + s.tapLevel) * stageMultiplier(s) * friendMultiplier(s) + powerPerSec(s) * 0.02;
+}
+
+// ---------- 탱이 ----------
+/** 탱이 단계 (미입양이면 -1). 탱이 레벨로 진화하되 연수 단계를 넘지 않는다 */
+export function petStage(s: GameState): number {
+  if (!s.petAdopted) return -1;
+  let k = 0;
+  while (k + 1 < PET_STAGES.length && s.petLevel >= PET_STAGES[k + 1].minLevel) k++;
+  return Math.min(k, s.stage);
+}
+
+/** 탱이 능력 배수: 레벨당 +5%, 진화 단계당 ×1.5 */
+export function petMultiplier(s: GameState): number {
+  return (1 + s.petLevel * PET.levelBonus) * Math.pow(PET.evolveMult, Math.max(0, petStage(s)));
+}
+
+/** 꼬리 콕콕 간격(초). 미구매면 null */
+export function petPokeIntervalSec(s: GameState): number | null {
+  if (!s.petAdopted || s.petPokeLevel === 0) return null;
+  return Math.max(PET.pokeMinSec, PET.pokeBaseSec - (s.petPokeLevel - 1) * PET.pokeStepSec);
+}
+
+/** 보물 1개의 가치 */
+export function petTreasureValue(s: GameState): number {
+  return powerPerSec(s) * (PET.treasureBaseSec + PET.treasureStepSec * s.petTreasureLevel) * petMultiplier(s);
 }
 
 export function critChance(s: GameState): number {
@@ -78,11 +121,26 @@ export function generatorCost(s: GameState, g: Generator): number {
 }
 
 // ---------- 레벨형 업그레이드 (탭 강화 / 크리티컬 / 전설의 기운) ----------
-const LEVEL_KEY: Record<UpgradeId, 'tapLevel' | 'critChanceLevel' | 'critMultLevel' | 'autoMultLevel'> = {
+type LevelKey =
+  | 'tapLevel'
+  | 'critChanceLevel'
+  | 'critMultLevel'
+  | 'autoMultLevel'
+  | 'petAdopted'
+  | 'petLevel'
+  | 'petPokeLevel'
+  | 'petTreasureLevel'
+  | 'petFriendLevel';
+const LEVEL_KEY: Record<UpgradeId, LevelKey> = {
   tap: 'tapLevel',
   critChance: 'critChanceLevel',
   critMult: 'critMultLevel',
   autoMult: 'autoMultLevel',
+  petAdopt: 'petAdopted',
+  petFeed: 'petLevel',
+  petPoke: 'petPokeLevel',
+  petTreasure: 'petTreasureLevel',
+  petFriend: 'petFriendLevel',
 };
 
 export function upgradeLevel(s: GameState, u: LeveledUpgrade): number {

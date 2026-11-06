@@ -132,7 +132,16 @@ export interface LeveledUpgrade {
   growth: number;
   maxLevel?: number;
 }
-export type UpgradeId = 'tap' | 'critChance' | 'critMult' | 'autoMult';
+export type UpgradeId =
+  | 'tap'
+  | 'critChance'
+  | 'critMult'
+  | 'autoMult'
+  | 'petAdopt'
+  | 'petFeed'
+  | 'petPoke'
+  | 'petTreasure'
+  | 'petFriend';
 
 /** 탭 강화: 레벨당 탭 기본값 +1 */
 export const TAP_UPGRADE: LeveledUpgrade = { id: 'tap', name: '손가락 단련', icon: '👆', baseCost: 50, growth: 2.2 };
@@ -170,3 +179,78 @@ export const EVENT = {
   rewardSec: 60,
   rewardMin: 50,
 };
+
+// ---------- 탱이 (펫) — docs/plans/tangiPetPlan.md ----------
+const PET_ART = `${import.meta.env.BASE_URL}assets/tangi`;
+
+export type PetFrame = 'idle' | 'blink' | 'act' | 'happy' | 'dig';
+export const PET_FRAMES: PetFrame[] = ['idle', 'blink', 'act', 'happy', 'dig'];
+
+export function petFrameImg(stage: number, f: PetFrame): string {
+  return f === 'idle' ? `${PET_ART}/stage${stage + 1}.png` : `${PET_ART}/stage${stage + 1}_${f}.png`;
+}
+
+export interface PetStage {
+  name: string;
+  /** 이 탱이 레벨 이상이면 진화 (단, 연수 단계를 넘을 수 없음) */
+  minLevel: number;
+  /** 화면 크기 배율 (강아지 시절은 작게) */
+  scale: number;
+}
+export const PET_STAGES: PetStage[] = [
+  { name: '아기 탱이', minLevel: 0, scale: 0.72 },
+  { name: '꼬마 탱이', minLevel: 5, scale: 0.85 },
+  { name: '공부견 탱이', minLevel: 10, scale: 1 },
+  { name: '직장견 탱이', minLevel: 15, scale: 1 },
+  { name: '헬스견 탱이', minLevel: 20, scale: 1 },
+  { name: '전설의 탱이', minLevel: 25, scale: 1 },
+  { name: '우주견 탱이', minLevel: 30, scale: 1 },
+  { name: '천상견 탱이', minLevel: 35, scale: 1 },
+  { name: '차원견 탱이', minLevel: 40, scale: 1 },
+];
+
+export const PET = {
+  /** 진화 1단계마다 탱이 능력 ×1.5 */
+  evolveMult: 1.5,
+  /** 탱이 레벨당 탱이 능력 +5% */
+  levelBonus: 0.05,
+  /** 탱이를 직접 탭했을 때: 연수 탭 값의 50% */
+  tapShare: 0.5,
+  /** 꼬리 콕콕: Lv.1 에 4초, 레벨당 -0.3초, 최소 1초 */
+  pokeBaseSec: 4,
+  pokeStepSec: 0.3,
+  pokeMinSec: 1,
+  /** 보물 찾기: 60초마다 초당 생산량 × (20 + 10×레벨)초 */
+  treasureIntervalSec: 60,
+  treasureBaseSec: 20,
+  treasureStepSec: 10,
+  /** 우정: 모든 생산량 +10% / 레벨 (더하기, 탱이 성장 배수와 무관) */
+  friendPerLevel: 0.1,
+  /** 화면: 탱이 폭(cqw, 성체 기준)과 연수와의 간격(무대 폭 %) */
+  width: 15,
+  followGap: 13,
+  speed: 14,
+  /** 보물 찾기 / 탭 반응 프레임 유지 시간 */
+  digMs: 1600,
+  happyMs: 900,
+};
+
+export const PET_IDLE_SEQUENCE: [PetFrame, number][] = [
+  ['idle', 1800],
+  ['act', 900],
+  ['idle', 1400],
+  ['blink', 140],
+  ['idle', 2200],
+  ['blink', 120],
+];
+
+export const PET_ADOPT_UPGRADE: LeveledUpgrade = { id: 'petAdopt', name: '탱이 입양하기', icon: '🐾', baseCost: 1_000, growth: 1, maxLevel: 1 };
+export const PET_FEED_UPGRADE: LeveledUpgrade = { id: 'petFeed', name: '간식 주기', icon: '🍖', baseCost: 1_000, growth: 1.6 };
+export const PET_POKE_UPGRADE: LeveledUpgrade = {
+  id: 'petPoke', name: '꼬리 콕콕', icon: '🐾', baseCost: 2_000, growth: 2,
+  maxLevel: 1 + Math.round((PET.pokeBaseSec - PET.pokeMinSec) / PET.pokeStepSec),
+};
+export const PET_TREASURE_UPGRADE: LeveledUpgrade = { id: 'petTreasure', name: '보물 찾기', icon: '🦴', baseCost: 5_000, growth: 2.5 };
+export const PET_FRIEND_UPGRADE: LeveledUpgrade = { id: 'petFriend', name: '우정', icon: '💕', baseCost: 10_000, growth: 2.2 };
+/** 보물 찾기 / 우정 카드가 열리는 탱이 레벨 */
+export const PET_UNLOCK = { treasureLevel: 3, friendLevel: 8 };

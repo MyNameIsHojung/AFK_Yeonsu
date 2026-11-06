@@ -135,6 +135,11 @@ export class Scene {
     this.seqTimer = window.setTimeout(() => this.stepIdle(), ms);
   }
 
+  /** 연수의 현재 위치 (탱이가 따라다니는 데 사용) */
+  charPos(): { x: number; depth: number } {
+    return { x: this.x, depth: this.depth };
+  }
+
   // ---------- 방 돌아다니기 ----------
   private scheduleWalk() {
     window.setTimeout(() => this.startWalk(), rand(WANDER.restMin, WANDER.restMax) * 1000);

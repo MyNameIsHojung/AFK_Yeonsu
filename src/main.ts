@@ -6,12 +6,22 @@ import {
   CRIT_MULT_UPGRADE,
   EVENT,
   GENERATORS,
+  PET,
+  PET_ADOPT_UPGRADE,
+  PET_FEED_UPGRADE,
+  PET_FRIEND_UPGRADE,
+  PET_POKE_UPGRADE,
+  PET_STAGES,
+  PET_TREASURE_UPGRADE,
+  PET_UNLOCK,
   STAGES,
   TAP_UPGRADE,
+  petFrameImg,
   type Expression,
   type LeveledUpgrade,
 } from './data';
 import { Scene } from './scene';
+import { Pet } from './pet';
 import { isRotated, setupFullscreen } from './fullscreen';
 import { setupAutoUpdate } from './update';
 import { fmt, fmtDuration } from './format';
@@ -26,6 +36,10 @@ import {
   generatorCost,
   isMaxed,
   load,
+  petPokeIntervalSec,
+  petMultiplier,
+  petStage,
+  petTreasureValue,
   powerPerSec,
   resetSave,
   rollTap,
@@ -55,8 +69,11 @@ const ui = {
   eventBubble: $<HTMLButtonElement>('event-bubble'),
   shopAuto: $('shop-auto'),
   shopTap: $('shop-tap'),
+  shopPet: $('shop-pet'),
   tabAuto: $<HTMLButtonElement>('tab-auto'),
   tabTap: $<HTMLButtonElement>('tab-tap'),
+  tabPet: $<HTMLButtonElement>('tab-pet'),
+  pet: $<HTMLButtonElement>('pet'),
   resetBtn: $<HTMLButtonElement>('reset-btn'),
   fullscreenBtn: $<HTMLButtonElement>('fullscreen-btn'),
   fullscreenBig: $<HTMLButtonElement>('fullscreen-big'),
@@ -80,6 +97,7 @@ const scene = new Scene({
   charWrap: $('char-wrap'),
   sprite: $('sprite'),
 });
+const pet = new Pet({ wrap: $('pet-wrap'), sprite: $('pet-sprite') }, () => scene.charPos());
 
 // ---------- 모달 ----------
 const modalQueue: { title: string; body: string; img?: string; bg?: string }[] = [];
@@ -103,9 +121,9 @@ function nextModal() {
 ui.modalOk.addEventListener('click', nextModal);
 
 // ---------- 캐릭터 ----------
-function floatNumber(text: string, x: number, y: number, crit = false) {
+function floatNumber(text: string, x: number, y: number, crit = false, kind = '') {
   const el = document.createElement('div');
-  el.className = crit ? 'float-num crit' : 'float-num';
+  el.className = ['float-num', crit ? 'crit' : '', kind].filter(Boolean).join(' ');
   el.textContent = text;
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
@@ -122,6 +140,12 @@ function popAt(evt: PointerEvent | null, text: string, crit = false) {
   const x = isRotated() ? evt.clientY - rect.top : evt.clientX - rect.left;
   const y = isRotated() ? rect.right - evt.clientX : evt.clientY - rect.top;
   floatNumber(text, x, y - h * 0.05, crit);
+}
+
+/** 연수 머리 위 좌표 (탱이 자동 탭 숫자용) */
+function charHeadPoint() {
+  const w = document.getElementById('char-wrap')!;
+  return { x: w.offsetLeft, y: w.offsetTop + w.offsetHeight * 0.2 };
 }
 
 /** 크리티컬 시 무대 흔들림 */
@@ -150,6 +174,69 @@ ui.yeonsu.addEventListener('pointerdown', (evt) => {
   afterGain();
 });
 
+// ---------- 탱이 ----------
+ui.pet.addEventListener('pointerdown', (evt) => {
+  evt.stopPropagation();
+  const v = tapValue(state) * PET.tapShare;
+  earn(state, v);
+  popAt(evt, `💕 +${fmt(v)}`);
+  pet.react('happy', PET.happyMs);
+  afterGain();
+});
+
+let pokeAcc = 0;
+let treasureAcc = 0;
+/** 꼬리 콕콕(자동 탭)·보물 찾기 타이머 */
+function petTick(dt: number) {
+  if (petStage(state) < 0) return;
+  const interval = petPokeIntervalSec(state);
+  if (interval !== null) {
+    pokeAcc += dt;
+    if (pokeAcc >= interval) {
+      pokeAcc = 0;
+      const { value, crit } = rollTap(state);
+      const v = value * petMultiplier(state);
+      earn(state, v);
+      pet.react('act', 450);
+      scene.squish();
+      const p = charHeadPoint();
+      floatNumber(`🐾 ${crit ? '크리티컬! ' : ''}+${fmt(v)}`, p.x, p.y, crit, crit ? '' : 'pet-fx');
+      if (crit) shake();
+    }
+  }
+  if (state.petTreasureLevel > 0) {
+    treasureAcc += dt;
+    if (treasureAcc >= PET.treasureIntervalSec) {
+      treasureAcc = 0;
+      pet.react('dig', PET.digMs);
+      window.setTimeout(() => {
+        const v = petTreasureValue(state);
+        earn(state, v);
+        const p = pet.headPoint();
+        floatNumber(`🦴 보물 발견! +${fmt(v)}`, p.x, p.y, false, 'pet-fx');
+        afterGain();
+      }, PET.digMs * 0.8);
+    }
+  }
+}
+
+/** 탱이 진화 확인 (먹이 구매 / 연수 진화 시) */
+let shownPetStage = -1;
+function checkPetStage(animate: boolean) {
+  const k = petStage(state);
+  if (k === shownPetStage) return;
+  const prev = shownPetStage;
+  shownPetStage = k;
+  pet.setStage(k, animate);
+  if (!animate || k < 0) return;
+  const ps = PET_STAGES[k];
+  if (prev < 0) {
+    showModal('🐶 탱이가 집에 왔어요!', '연수 옆을 졸졸 따라다녀요.\n간식을 주면 쑥쑥 자라요.', petFrameImg(k, 'happy'), STAGES[state.stage].room);
+  } else {
+    showModal(`🐶 ${ps.name}(으)로 성장!`, '탱이 능력이 ×1.5 강해졌어요.', petFrameImg(k, 'happy'), STAGES[state.stage].room);
+  }
+}
+
 // ---------- 진화 ----------
 function afterGain() {
   const evolved = checkEvolve(state);
@@ -161,6 +248,8 @@ function afterGain() {
   flash.addEventListener('animationend', () => flash.remove());
   scene.setStage(evolved, true);
   showModal(`🎉 ${st.name}(으)로 성장!`, `${st.desc}\n모든 생산량 보너스가 올랐어요.`, st.img, st.room);
+  // 연수가 커지면 막혀 있던 탱이 진화가 풀릴 수 있다
+  checkPetStage(true);
   save(state);
 }
 
@@ -177,11 +266,12 @@ interface ShopRow {
 }
 
 // 탭: 자동 생산 / 클릭 강화
-type TabId = 'auto' | 'tap';
+type TabId = 'auto' | 'tap' | 'pet';
 let activeTab: TabId = 'auto';
 const tabs: Record<TabId, { btn: HTMLButtonElement; list: HTMLElement }> = {
   auto: { btn: ui.tabAuto, list: ui.shopAuto },
   tap: { btn: ui.tabTap, list: ui.shopTap },
+  pet: { btn: ui.tabPet, list: ui.shopPet },
 };
 function selectTab(id: TabId) {
   activeTab = id;
@@ -193,6 +283,7 @@ function selectTab(id: TabId) {
 }
 ui.tabAuto.addEventListener('click', () => selectTab('auto'));
 ui.tabTap.addEventListener('click', () => selectTab('tap'));
+ui.tabPet.addEventListener('click', () => selectTab('pet'));
 
 function makeRow(tab: TabId, onBuy: () => void): ShopRow & { tab: TabId } {
   const btn = document.createElement('button');
@@ -210,7 +301,9 @@ function makeRow(tab: TabId, onBuy: () => void): ShopRow & { tab: TabId } {
 
 function makeUpgradeRow(tab: TabId, u: LeveledUpgrade) {
   const row = makeRow(tab, () => {
-    if (buyUpgrade(state, u)) render();
+    if (!buyUpgrade(state, u)) return;
+    if (tab === 'pet') checkPetStage(true);
+    render();
   });
   row.icon.textContent = u.icon;
   row.name.textContent = u.name;
@@ -227,6 +320,11 @@ const autoMultRow = makeUpgradeRow('auto', AUTO_MULT_UPGRADE);
 const tapRow = makeUpgradeRow('tap', TAP_UPGRADE);
 const critChanceRow = makeUpgradeRow('tap', CRIT_CHANCE_UPGRADE);
 const critMultRow = makeUpgradeRow('tap', CRIT_MULT_UPGRADE);
+const petAdoptRow = makeUpgradeRow('pet', PET_ADOPT_UPGRADE);
+const petFeedRow = makeUpgradeRow('pet', PET_FEED_UPGRADE);
+const petPokeRow = makeUpgradeRow('pet', PET_POKE_UPGRADE);
+const petTreasureRow = makeUpgradeRow('pet', PET_TREASURE_UPGRADE);
+const petFriendRow = makeUpgradeRow('pet', PET_FRIEND_UPGRADE);
 
 // ---------- 배고픈 연수 이벤트 ----------
 let nextEventAt = 0;
@@ -247,7 +345,7 @@ ui.eventBubble.addEventListener('pointerdown', (evt) => {
 });
 
 // ---------- 상점 순차 등장 ----------
-const revealOrder: Record<TabId, number> = { auto: 0, tap: 0 };
+const revealOrder: Record<TabId, number> = { auto: 0, tap: 0, pet: 0 };
 let initialReveal = true;
 /** 행이 처음 보일 때 아래에서 튀어나오는 연출. 첫 화면에서는 순서대로 시차를 둔다 */
 function reveal(row: ShopRow & { tab: TabId }) {
@@ -326,6 +424,33 @@ function render() {
     row.owned.textContent = owned > 0 ? `${owned}` : '';
     row.btn.disabled = locked || state.power < cost;
   }
+  // 탱이 탭: 입양 전엔 입양 카드만
+  if (!state.petAdopted) {
+    renderUpgrade(petAdoptRow, PET_ADOPT_UPGRADE, '연수의 단짝 강아지');
+    reveal(petAdoptRow);
+  } else {
+    petAdoptRow.btn.classList.add('hidden');
+    const k = petStage(state);
+    const next = PET_STAGES[k + 1];
+    let feedSub = `${PET_STAGES[k].name} · 최종 진화`;
+    if (next) {
+      feedSub = state.petLevel >= next.minLevel ? `진화하려면 연수 Lv.${k + 2} 필요` : `다음 진화 Lv.${next.minLevel}`;
+    }
+    renderUpgrade(petFeedRow, PET_FEED_UPGRADE, feedSub);
+    reveal(petFeedRow);
+    const interval = petPokeIntervalSec(state);
+    renderUpgrade(petPokeRow, PET_POKE_UPGRADE, interval === null ? `${PET.pokeBaseSec}초마다 자동 탭` : `${interval.toFixed(1)}초마다 자동 탭`);
+    reveal(petPokeRow);
+    if (state.petLevel >= PET_UNLOCK.treasureLevel || state.petTreasureLevel > 0) {
+      renderUpgrade(petTreasureRow, PET_TREASURE_UPGRADE, `${PET.treasureIntervalSec}초마다 보물`);
+      reveal(petTreasureRow);
+    }
+    if (state.petLevel >= PET_UNLOCK.friendLevel || state.petFriendLevel > 0) {
+      renderUpgrade(petFriendRow, PET_FRIEND_UPGRADE, `모든 생산 +${Math.round(state.petFriendLevel * PET.friendPerLevel * 100)}%`);
+      reveal(petFriendRow);
+    }
+  }
+
   // 전설의 기운은 전설 단계부터 등장
   if (state.stage >= AUTO_MULT.unlockStage) {
     renderUpgrade(autoMultRow, AUTO_MULT_UPGRADE, `자동 생산 ×${autoMultiplier(state).toFixed(2)}`);
@@ -343,6 +468,7 @@ function tick(nowPerf: number) {
   last = nowPerf;
 
   earn(state, powerPerSec(state) * dt);
+  petTick(dt);
   afterGain();
 
   const now = Date.now();
@@ -387,8 +513,10 @@ ui.resetBtn.addEventListener('click', () => {
 setupFullscreen([ui.fullscreenBtn, ui.fullscreenBig]);
 setupAutoUpdate();
 Scene.preload();
+Pet.preload();
 checkEvolve(state);
 scene.setStage(state.stage, false);
+checkPetStage(false);
 scheduleEvent(Date.now());
 render();
 if (offlineGain > 0 && offlineSec >= 60) {

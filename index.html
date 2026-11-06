@@ -41,6 +41,16 @@
           <div class="progress-label" id="progress-label"></div>
         </div>
 
+        <!-- 탱이 (입양 전엔 숨김). 연수 뒤쪽 레이어 -->
+        <div class="pet-wrap hidden" id="pet-wrap">
+          <div class="char-shadow"></div>
+          <div class="hop">
+            <button class="pet" id="pet" aria-label="탱이 쓰다듬기">
+              <div class="sprite" id="pet-sprite"></div>
+            </button>
+          </div>
+        </div>
+
         <div class="char-wrap" id="char-wrap">
           <div class="char-shadow"></div>
           <div class="hop">
@@ -56,9 +66,11 @@
           <div class="shop-tabs">
             <button class="shop-tab active" id="tab-auto">자동 생산<span class="tab-dot"></span></button>
             <button class="shop-tab" id="tab-tap">클릭 강화<span class="tab-dot"></span></button>
+            <button class="shop-tab" id="tab-pet">🐶 탱이<span class="tab-dot"></span></button>
           </div>
           <div class="shop-list" id="shop-auto"></div>
           <div class="shop-list hidden" id="shop-tap"></div>
+          <div class="shop-list hidden" id="shop-pet"></div>
         </div>
       </section>
     </div>
