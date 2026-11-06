@@ -26,12 +26,14 @@
             <div class="stage-chip">
               <span class="stage-badge" id="stage-level">Lv.1</span>
               <span class="stage-name" id="stage-name">아기 연수</span>
+              <span class="rebirth-badge hidden" id="rebirth-badge"></span>
               <span class="stage-desc" id="stage-desc"></span>
             </div>
             <div class="power-chip">
               <div class="power">💪 <span id="power">0</span></div>
               <div class="pps">초당 <span id="pps">0</span> · 탭 <span id="tap">1</span></div>
             </div>
+            <button id="rebirth-btn" class="icon-btn rebirth-btn hidden" title="환생" aria-label="환생">♻</button>
             <button id="fullscreen-btn" class="icon-btn" title="전체화면 (가로)" aria-label="전체화면">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path class="fs-enter" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /><path class="fs-exit" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" /></svg>
             </button>
@@ -84,7 +86,10 @@
         <img id="modal-img" class="modal-img hidden" alt="" />
         <h3 id="modal-title"></h3>
         <p id="modal-body"></p>
-        <button id="modal-ok" class="primary-btn">확인</button>
+        <div class="modal-actions">
+          <button id="modal-cancel" class="secondary-btn hidden">취소</button>
+          <button id="modal-ok" class="primary-btn">확인</button>
+        </div>
       </div>
     </div>
 

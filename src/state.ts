@@ -6,6 +6,7 @@ import {
   OFFLINE_CAP_SEC,
   PET,
   PET_STAGES,
+  REBIRTH,
   STAGES,
   STAGE_BONUS_PER_LEVEL,
   type Generator,
@@ -28,6 +29,10 @@ export interface GameState {
   petPokeLevel: number;
   petTreasureLevel: number;
   petFriendLevel: number;
+  /** 환생 횟수 (환생해도 유지) */
+  rebirths: number;
+  /** 환생 직후 첫 화면에서 축하 창을 띄우기 위한 표시 */
+  justReborn: boolean;
   owned: Record<string, number>;
   stage: number;
   lastSaved: number;
@@ -46,6 +51,8 @@ export function newState(): GameState {
     petPokeLevel: 0,
     petTreasureLevel: 0,
     petFriendLevel: 0,
+    rebirths: 0,
+    justReborn: false,
     owned: Object.fromEntries(GENERATORS.map((g) => [g.id, 0])),
     stage: 0,
     lastSaved: Date.now(),
@@ -66,14 +73,33 @@ export function friendMultiplier(s: GameState): number {
   return 1 + s.petFriendLevel * PET.friendPerLevel;
 }
 
-export function powerPerSec(s: GameState): number {
+/** 환생 배수: 2^환생 횟수. 모든 획득의 맨 마지막에 곱한다 */
+export function rebirthMultiplier(s: GameState): number {
+  return Math.pow(REBIRTH.perRebirth, s.rebirths);
+}
+
+export function canRebirth(s: GameState): boolean {
+  return s.stage >= REBIRTH.minStage;
+}
+
+/** 환생: 환생 횟수만 남기고 완전 초기화 */
+export function rebirth(s: GameState): GameState {
+  return { ...newState(), rebirths: s.rebirths + 1, justReborn: true };
+}
+
+/** 환생 배수를 곱하기 전 초당 생산량 */
+function rawPowerPerSec(s: GameState): number {
   const base = GENERATORS.reduce((sum, g) => sum + g.pps * (s.owned[g.id] ?? 0), 0);
   return base * stageMultiplier(s) * autoMultiplier(s) * friendMultiplier(s);
 }
 
+export function powerPerSec(s: GameState): number {
+  return rawPowerPerSec(s) * rebirthMultiplier(s);
+}
+
 export function tapValue(s: GameState): number {
-  // 탭은 기본값 + 초당 생산량의 2% 를 함께 준다 (후반에도 탭이 의미 있도록). pps 에는 이미 우정 배수가 들어 있음
-  return (1 + s.tapLevel) * stageMultiplier(s) * friendMultiplier(s) + powerPerSec(s) * 0.02;
+  // 탭은 기본값 + 초당 생산량의 2% 를 함께 준다 (후반에도 탭이 의미 있도록). 환생 배수는 마지막에 한 번만
+  return ((1 + s.tapLevel) * stageMultiplier(s) * friendMultiplier(s) + rawPowerPerSec(s) * 0.02) * rebirthMultiplier(s);
 }
 
 // ---------- 탱이 ----------
@@ -152,16 +178,56 @@ export function isMaxed(s: GameState, u: LeveledUpgrade): boolean {
 }
 
 export function upgradeCost(s: GameState, u: LeveledUpgrade): number {
-  return Math.ceil(u.baseCost * Math.pow(u.growth, upgradeLevel(s, u)));
+  return upgradeCostN(s, u, 1);
+}
+
+/** 누적 가격형: 레벨 L 까지 쓴 총 가격 */
+function cumulativeSpent(u: LeveledUpgrade, level: number): number {
+  const c = u.cumulative!;
+  return c.a * Math.pow(level, c.p);
+}
+
+/** n 레벨을 한꺼번에 살 때 총 가격 (등비수열 합) */
+export function upgradeCostN(s: GameState, u: LeveledUpgrade, n: number): number {
+  if (n <= 0) return 0;
+  const lv = upgradeLevel(s, u);
+  if (u.cumulative) return Math.ceil(cumulativeSpent(u, lv + n) - cumulativeSpent(u, lv));
+  const first = u.baseCost * Math.pow(u.growth, upgradeLevel(s, u));
+  if (u.growth === 1) return Math.ceil(first * n);
+  return Math.ceil((first * (Math.pow(u.growth, n) - 1)) / (u.growth - 1));
+}
+
+/** 지금 연수력으로 살 수 있는 최대 레벨 수 */
+export function maxAffordable(s: GameState, u: LeveledUpgrade): number {
+  const lv = upgradeLevel(s, u);
+  let n: number;
+  if (u.cumulative) {
+    // a·(L+n)^p ≤ a·L^p + power  →  L+n ≤ ((a·L^p + power)/a)^(1/p)
+    const c = u.cumulative;
+    n = Math.floor(Math.pow((cumulativeSpent(u, lv) + s.power) / c.a, 1 / c.p)) - lv;
+  } else {
+    const first = u.baseCost * Math.pow(u.growth, lv);
+    n = u.growth === 1 ? Math.floor(s.power / first) : Math.floor(Math.log(1 + (s.power * (u.growth - 1)) / first) / Math.log(u.growth));
+  }
+  if (u.maxLevel !== undefined) n = Math.min(n, u.maxLevel - upgradeLevel(s, u));
+  // 부동소수 오차 보정
+  while (n > 0 && upgradeCostN(s, u, n) > s.power) n--;
+  return Math.max(0, n);
+}
+
+export function buyUpgradeN(s: GameState, u: LeveledUpgrade, n: number): boolean {
+  if (n <= 0) return false;
+  if (u.maxLevel !== undefined && upgradeLevel(s, u) + n > u.maxLevel) return false;
+  const cost = upgradeCostN(s, u, n);
+  if (s.power < cost) return false;
+  s.power -= cost;
+  s[LEVEL_KEY[u.id]] += n;
+  return true;
 }
 
 export function buyUpgrade(s: GameState, u: LeveledUpgrade): boolean {
   if (isMaxed(s, u)) return false;
-  const cost = upgradeCost(s, u);
-  if (s.power < cost) return false;
-  s.power -= cost;
-  s[LEVEL_KEY[u.id]]++;
-  return true;
+  return buyUpgradeN(s, u, 1);
 }
 
 export function earn(s: GameState, amount: number): void {

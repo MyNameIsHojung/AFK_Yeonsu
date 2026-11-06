@@ -254,6 +254,24 @@ button {
 .stage-name {
   font-size: 2.2cqw;
 }
+.rebirth-badge {
+  align-self: center;
+  background: linear-gradient(90deg, #8b5cf6, #ec4899);
+  color: #fff;
+  font-size: 1.15cqw;
+  padding: 0.2cqw 0.8cqw;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.rebirth-btn {
+  background: linear-gradient(135deg, #a78bfa, #f472b6) !important;
+  color: #fff !important;
+  animation: rebirth-pulse 1.6s ease-in-out infinite;
+}
+@keyframes rebirth-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.5); }
+  50% { box-shadow: 0 0 0 0.6cqw rgba(236, 72, 153, 0); }
+}
 .stage-desc {
   font-size: 1.3cqw;
   color: var(--muted);
@@ -596,9 +614,13 @@ button {
   transform: translateY(0.3cqw);
   box-shadow: 0 0.15cqw 0 #ead8c6;
 }
-.shop-item:disabled {
+.shop-item:disabled,
+.shop-item.is-disabled {
   opacity: 0.55;
   cursor: default;
+}
+.shop-item.is-disabled .qty-chip {
+  cursor: pointer;
 }
 .shop-item.appear {
   animation: shop-appear 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) backwards;
@@ -635,6 +657,20 @@ button {
 .shop-cost {
   font-size: 1.2cqw;
   color: var(--accent-dark);
+  white-space: nowrap;
+}
+/* 간식 주기 수량 전환 버튼 */
+.qty-chip {
+  position: absolute;
+  top: -0.6cqw;
+  left: -0.4cqw;
+  background: #fff;
+  color: var(--accent-dark);
+  border: 0.15cqw solid var(--accent);
+  font-size: 0.95cqw;
+  padding: 0.1cqw 0.5cqw;
+  border-radius: 999px;
+  cursor: pointer;
   white-space: nowrap;
 }
 .shop-owned {
@@ -691,6 +727,20 @@ button {
   border-radius: 20px;
   background-size: cover;
   background-position: center;
+}
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.secondary-btn {
+  background: #f1e6da;
+  color: var(--muted);
+  border: none;
+  border-radius: 14px;
+  padding: 10px 22px;
+  font-size: 18px;
+  box-shadow: 0 4px 0 #ddc9b5;
 }
 .primary-btn {
   background: var(--accent);

@@ -131,6 +131,8 @@ export interface LeveledUpgrade {
   baseCost: number;
   growth: number;
   maxLevel?: number;
+  /** 있으면 등비 가격 대신 "누적 가격 = a × 레벨^p" 로 계산 (레벨이 수천까지 가는 항목용) */
+  cumulative?: { a: number; p: number };
 }
 export type UpgradeId =
   | 'tap'
@@ -197,23 +199,24 @@ export interface PetStage {
   /** 화면 크기 배율 (강아지 시절은 작게) */
   scale: number;
 }
+// 진화 필요 레벨은 단계마다 ×3 (3, 9, 27 … 6561) — 2026-11-06 피드백
 export const PET_STAGES: PetStage[] = [
   { name: '아기 탱이', minLevel: 0, scale: 0.72 },
-  { name: '꼬마 탱이', minLevel: 5, scale: 0.85 },
-  { name: '공부견 탱이', minLevel: 10, scale: 1 },
-  { name: '직장견 탱이', minLevel: 15, scale: 1 },
-  { name: '헬스견 탱이', minLevel: 20, scale: 1 },
-  { name: '전설의 탱이', minLevel: 25, scale: 1 },
-  { name: '우주견 탱이', minLevel: 30, scale: 1 },
-  { name: '천상견 탱이', minLevel: 35, scale: 1 },
-  { name: '차원견 탱이', minLevel: 40, scale: 1 },
+  { name: '꼬마 탱이', minLevel: 3, scale: 0.85 },
+  { name: '공부견 탱이', minLevel: 9, scale: 1 },
+  { name: '직장견 탱이', minLevel: 27, scale: 1 },
+  { name: '헬스견 탱이', minLevel: 81, scale: 1 },
+  { name: '전설의 탱이', minLevel: 243, scale: 1 },
+  { name: '우주견 탱이', minLevel: 729, scale: 1 },
+  { name: '천상견 탱이', minLevel: 2_187, scale: 1 },
+  { name: '차원견 탱이', minLevel: 6_561, scale: 1 },
 ];
 
 export const PET = {
   /** 진화 1단계마다 탱이 능력 ×1.5 */
   evolveMult: 1.5,
-  /** 탱이 레벨당 탱이 능력 +5% */
-  levelBonus: 0.05,
+  /** 탱이 레벨당 탱이 능력 +1% (레벨이 수천까지 올라가므로 +5% → +1%) */
+  levelBonus: 0.01,
   /** 탱이를 직접 탭했을 때: 연수 탭 값의 50% */
   tapShare: 0.5,
   /** 꼬리 콕콕: Lv.1 에 4초, 레벨당 -0.3초, 최소 1초 */
@@ -245,7 +248,15 @@ export const PET_IDLE_SEQUENCE: [PetFrame, number][] = [
 ];
 
 export const PET_ADOPT_UPGRADE: LeveledUpgrade = { id: 'petAdopt', name: '탱이 입양하기', icon: '🐾', baseCost: 1_000, growth: 1, maxLevel: 1 };
-export const PET_FEED_UPGRADE: LeveledUpgrade = { id: 'petFeed', name: '간식 주기', icon: '🍖', baseCost: 1_000, growth: 1.6 };
+/** 레벨이 수천까지 가므로 누적 가격 = 30 × Lv^2.9 — 진화 레벨까지의 누적이 연수 단계 기준과 비슷하게 맞춤
+ *  누적: Lv.3 ≈ 730 · Lv.9 ≈ 1.8만 · Lv.27 ≈ 42만 · Lv.81 ≈ 1천만 · Lv.243 ≈ 2.5억 · Lv.729 ≈ 60억 · Lv.2187 ≈ 1,500억 · Lv.6561 ≈ 3.5조 */
+export const PET_FEED_UPGRADE: LeveledUpgrade = {
+  id: 'petFeed', name: '간식 주기', icon: '🍖', baseCost: 30, growth: 1,
+  cumulative: { a: 30, p: 2.9 },
+};
+/** 간식 주기 대량 구매 수량 (카드 왼쪽 위 버튼으로 전환) */
+export const FEED_QTY_MODES = [1, 10, 100, 'max'] as const;
+export type FeedQty = (typeof FEED_QTY_MODES)[number];
 export const PET_POKE_UPGRADE: LeveledUpgrade = {
   id: 'petPoke', name: '꼬리 콕콕', icon: '🐾', baseCost: 2_000, growth: 2,
   maxLevel: 1 + Math.round((PET.pokeBaseSec - PET.pokeMinSec) / PET.pokeStepSec),
@@ -253,4 +264,12 @@ export const PET_POKE_UPGRADE: LeveledUpgrade = {
 export const PET_TREASURE_UPGRADE: LeveledUpgrade = { id: 'petTreasure', name: '보물 찾기', icon: '🦴', baseCost: 5_000, growth: 2.5 };
 export const PET_FRIEND_UPGRADE: LeveledUpgrade = { id: 'petFriend', name: '우정', icon: '💕', baseCost: 10_000, growth: 2.2 };
 /** 보물 찾기 / 우정 카드가 열리는 탱이 레벨 */
-export const PET_UNLOCK = { treasureLevel: 3, friendLevel: 8 };
+export const PET_UNLOCK = { treasureLevel: 3, friendLevel: 9 };
+
+// ---------- 환생 — docs/plans/rebirthPlan.md ----------
+export const REBIRTH = {
+  /** 이 연수 단계(인덱스) 이상이면 환생 가능: 5 = 6단계 전설의 연수 */
+  minStage: 5,
+  /** 환생 1회당 모든 획득 ×2 (최종 곱) */
+  perRebirth: 2,
+};

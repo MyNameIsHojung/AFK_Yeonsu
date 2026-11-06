@@ -5,6 +5,7 @@ import {
   CRIT_CHANCE_UPGRADE,
   CRIT_MULT_UPGRADE,
   EVENT,
+  FEED_QTY_MODES,
   GENERATORS,
   PET,
   PET_ADOPT_UPGRADE,
@@ -14,9 +15,11 @@ import {
   PET_STAGES,
   PET_TREASURE_UPGRADE,
   PET_UNLOCK,
+  REBIRTH,
   STAGES,
   TAP_UPGRADE,
   petFrameImg,
+  type FeedQty,
   type Expression,
   type LeveledUpgrade,
 } from './data';
@@ -29,6 +32,12 @@ import {
   autoMultiplier,
   buyGenerator,
   buyUpgrade,
+  buyUpgradeN,
+  canRebirth,
+  maxAffordable,
+  rebirth,
+  rebirthMultiplier,
+  upgradeCostN,
   checkEvolve,
   critChance,
   critMultiplier,
@@ -83,6 +92,9 @@ const ui = {
   modalTitle: $('modal-title'),
   modalBody: $('modal-body'),
   modalOk: $<HTMLButtonElement>('modal-ok'),
+  modalCancel: $<HTMLButtonElement>('modal-cancel'),
+  rebirthBtn: $<HTMLButtonElement>('rebirth-btn'),
+  rebirthBadge: $('rebirth-badge'),
 };
 
 const { state, offlineGain, offlineSec } = load();
@@ -100,17 +112,32 @@ const scene = new Scene({
 const pet = new Pet({ wrap: $('pet-wrap'), sprite: $('pet-sprite') }, () => scene.charPos());
 
 // ---------- 모달 ----------
-const modalQueue: { title: string; body: string; img?: string; bg?: string }[] = [];
+interface ModalItem {
+  title: string;
+  body: string;
+  img?: string;
+  bg?: string;
+  /** 있으면 확인/취소 창: 확인 시 호출 */
+  onConfirm?: () => void;
+}
+const modalQueue: ModalItem[] = [];
+let currentModal: ModalItem | null = null;
 function showModal(title: string, body: string, img?: string, bg?: string) {
   modalQueue.push({ title, body, img, bg });
   if (ui.modal.classList.contains('hidden')) nextModal();
 }
+function showConfirm(title: string, body: string, onConfirm: () => void, img?: string, bg?: string) {
+  modalQueue.unshift({ title, body, img, bg, onConfirm });
+  nextModal();
+}
 function nextModal() {
-  const m = modalQueue.shift();
+  const m = modalQueue.shift() ?? null;
+  currentModal = m;
   if (!m) {
     ui.modal.classList.add('hidden');
     return;
   }
+  ui.modalCancel.classList.toggle('hidden', !m.onConfirm);
   ui.modalTitle.textContent = m.title;
   ui.modalBody.textContent = m.body;
   ui.modalImg.classList.toggle('hidden', !m.img);
@@ -118,7 +145,12 @@ function nextModal() {
   ui.modalImg.style.backgroundImage = m.bg ? `url(${m.bg})` : '';
   ui.modal.classList.remove('hidden');
 }
-ui.modalOk.addEventListener('click', nextModal);
+ui.modalOk.addEventListener('click', () => {
+  const m = currentModal;
+  nextModal();
+  m?.onConfirm?.();
+});
+ui.modalCancel.addEventListener('click', nextModal);
 
 // ---------- 캐릭터 ----------
 function floatNumber(text: string, x: number, y: number, crit = false, kind = '') {
@@ -247,7 +279,8 @@ function afterGain() {
   ui.screen.appendChild(flash);
   flash.addEventListener('animationend', () => flash.remove());
   scene.setStage(evolved, true);
-  showModal(`🎉 ${st.name}(으)로 성장!`, `${st.desc}\n모든 생산량 보너스가 올랐어요.`, st.img, st.room);
+  const rebirthHint = evolved === REBIRTH.minStage ? '\n♻ 이제 환생할 수 있어요! (오른쪽 위 버튼)' : '';
+  showModal(`🎉 ${st.name}(으)로 성장!`, `${st.desc}\n모든 생산량 보너스가 올랐어요.${rebirthHint}`, st.img, st.room);
   // 연수가 커지면 막혀 있던 탱이 진화가 풀릴 수 있다
   checkPetStage(true);
   save(state);
@@ -321,7 +354,26 @@ const tapRow = makeUpgradeRow('tap', TAP_UPGRADE);
 const critChanceRow = makeUpgradeRow('tap', CRIT_CHANCE_UPGRADE);
 const critMultRow = makeUpgradeRow('tap', CRIT_MULT_UPGRADE);
 const petAdoptRow = makeUpgradeRow('pet', PET_ADOPT_UPGRADE);
-const petFeedRow = makeUpgradeRow('pet', PET_FEED_UPGRADE);
+// 간식 주기: 카드 왼쪽 위 수량 버튼(×1/×10/×100/최대)으로 대량 구매
+let feedQty: FeedQty = 1;
+const feedCount = () => (feedQty === 'max' ? maxAffordable(state, PET_FEED_UPGRADE) : feedQty);
+const petFeedRow = makeRow('pet', () => {
+  if (!buyUpgradeN(state, PET_FEED_UPGRADE, feedCount())) return;
+  checkPetStage(true);
+  render();
+});
+petFeedRow.icon.textContent = PET_FEED_UPGRADE.icon;
+petFeedRow.name.textContent = PET_FEED_UPGRADE.name;
+const feedQtyChip = document.createElement('span');
+feedQtyChip.className = 'qty-chip';
+feedQtyChip.setAttribute('role', 'button');
+feedQtyChip.title = '구매 수량 바꾸기';
+petFeedRow.btn.appendChild(feedQtyChip);
+feedQtyChip.addEventListener('click', (e) => {
+  e.stopPropagation();
+  feedQty = FEED_QTY_MODES[(FEED_QTY_MODES.indexOf(feedQty) + 1) % FEED_QTY_MODES.length];
+  render();
+});
 const petPokeRow = makeUpgradeRow('pet', PET_POKE_UPGRADE);
 const petTreasureRow = makeUpgradeRow('pet', PET_TREASURE_UPGRADE);
 const petFriendRow = makeUpgradeRow('pet', PET_FRIEND_UPGRADE);
@@ -334,7 +386,7 @@ function scheduleEvent(now: number) {
   nextEventAt = now + (EVENT.minIntervalSec + Math.random() * span) * 1000;
 }
 ui.eventBubble.addEventListener('pointerdown', (evt) => {
-  const reward = Math.max(EVENT.rewardMin, powerPerSec(state) * EVENT.rewardSec);
+  const reward = Math.max(EVENT.rewardMin * rebirthMultiplier(state), powerPerSec(state) * EVENT.rewardSec);
   earn(state, reward);
   popAt(evt, `🍗 +${fmt(reward)}`);
   scene.showExpression('happy');
@@ -376,6 +428,10 @@ function render() {
   ui.power.textContent = fmt(state.power);
   ui.pps.textContent = fmt(powerPerSec(state));
   ui.tap.textContent = fmt(tapValue(state));
+
+  ui.rebirthBadge.classList.toggle('hidden', state.rebirths === 0);
+  ui.rebirthBadge.textContent = `♻ ${state.rebirths}회 · ×${fmt(rebirthMultiplier(state))}`;
+  ui.rebirthBtn.classList.toggle('hidden', !canRebirth(state));
 
   const st = STAGES[state.stage];
   ui.stageLevel.textContent = `Lv.${state.stage + 1}`;
@@ -436,7 +492,14 @@ function render() {
     if (next) {
       feedSub = state.petLevel >= next.minLevel ? `진화하려면 연수 Lv.${k + 2} 필요` : `다음 진화 Lv.${next.minLevel}`;
     }
-    renderUpgrade(petFeedRow, PET_FEED_UPGRADE, feedSub);
+    const n = feedCount();
+    const cost = upgradeCostN(state, PET_FEED_UPGRADE, Math.max(1, n));
+    petFeedRow.sub.textContent = feedSub;
+    petFeedRow.cost.textContent = `💪 ${fmt(cost)}`;
+    petFeedRow.owned.textContent = `Lv.${state.petLevel}`;
+    // disabled 를 쓰면 안쪽 수량 버튼도 안 눌리므로 클래스로 흐리게만 처리 (구매는 클릭 시 검사)
+    petFeedRow.btn.classList.toggle('is-disabled', n === 0 || state.power < cost);
+    feedQtyChip.textContent = feedQty === 'max' ? `최대 ${n}` : `×${feedQty}`;
     reveal(petFeedRow);
     const interval = petPokeIntervalSec(state);
     renderUpgrade(petPokeRow, PET_POKE_UPGRADE, interval === null ? `${PET.pokeBaseSec}초마다 자동 탭` : `${interval.toFixed(1)}초마다 자동 탭`);
@@ -502,8 +565,28 @@ window.addEventListener('beforeunload', () => {
   if (!resetting) save(state);
 });
 
+ui.rebirthBtn.addEventListener('click', () => {
+  if (!canRebirth(state)) return;
+  const now = rebirthMultiplier(state);
+  showConfirm(
+    '♻ 환생할까요?',
+    `연수력·단계·업그레이드·탱이까지 모든 진행이 처음으로 돌아가요.\n대신 모든 획득이 영원히 ×${fmt(now)} → ×${fmt(now * REBIRTH.perRebirth)}!`,
+    () => {
+      const next = rebirth(state);
+      // state 객체를 그대로 교체 (beforeunload 저장도 새 상태로)
+      for (const k of Object.keys(state)) delete (state as unknown as Record<string, unknown>)[k];
+      Object.assign(state, next);
+      save(state);
+      const flash = document.createElement('div');
+      flash.className = 'flash';
+      ui.screen.appendChild(flash);
+      window.setTimeout(() => location.reload(), 450);
+    },
+  );
+});
+
 ui.resetBtn.addEventListener('click', () => {
-  if (!confirm('정말 처음부터 다시 할까요? 모든 진행이 사라져요.')) return;
+  if (!confirm('정말 처음부터 다시 할까요? 환생 기록까지 모든 진행이 사라져요.')) return;
   resetting = true;
   resetSave();
   location.reload();
@@ -519,6 +602,11 @@ scene.setStage(state.stage, false);
 checkPetStage(false);
 scheduleEvent(Date.now());
 render();
+if (state.justReborn) {
+  state.justReborn = false;
+  save(state);
+  showModal(`♻ ${state.rebirths}번째 환생!`, `아기 연수로 다시 시작해요.\n이제 모든 획득 ×${fmt(rebirthMultiplier(state))}`, STAGES[0].img, STAGES[0].room);
+}
 if (offlineGain > 0 && offlineSec >= 60) {
   showModal('💤 연수가 혼자 컸어요', `${fmtDuration(offlineSec)} 동안\n💪 ${fmt(offlineGain)} 연수력을 모았어요!`);
 }
