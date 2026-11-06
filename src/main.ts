@@ -1,6 +1,7 @@
 import './style.css';
 import { EVENT, GENERATORS, STAGES, TAP_UPGRADE, type Expression } from './data';
 import { Scene } from './scene';
+import { isRotated, setupFullscreen } from './fullscreen';
 import { fmt, fmtDuration } from './format';
 import {
   buyGenerator,
@@ -36,6 +37,9 @@ const ui = {
   eventBubble: $<HTMLButtonElement>('event-bubble'),
   shopList: $('shop-list'),
   resetBtn: $<HTMLButtonElement>('reset-btn'),
+  fullscreenBtn: $<HTMLButtonElement>('fullscreen-btn'),
+  fullscreenBig: $<HTMLButtonElement>('fullscreen-big'),
+  screen: $('screen'),
   modal: $('modal'),
   modalImg: $<HTMLImageElement>('modal-img'),
   modalTitle: $('modal-title'),
@@ -89,10 +93,14 @@ function floatNumber(text: string, x: number, y: number) {
 }
 
 function popAt(evt: PointerEvent | null, text: string) {
+  const w = ui.arena.offsetWidth;
+  const h = ui.arena.offsetHeight;
+  if (!evt) return floatNumber(text, w / 2, h / 2);
   const rect = ui.arena.getBoundingClientRect();
-  const x = evt ? evt.clientX - rect.left : rect.width / 2;
-  const y = evt ? evt.clientY - rect.top - 20 : rect.height / 2;
-  floatNumber(text, x, y);
+  // 강제 가로(90도 회전) 중이면 화면 좌표를 무대 좌표로 되돌린다: 무대 x축 = 화면 아래쪽, y축 = 화면 왼쪽
+  const x = isRotated() ? evt.clientY - rect.top : evt.clientX - rect.left;
+  const y = isRotated() ? rect.right - evt.clientX : evt.clientY - rect.top;
+  floatNumber(text, x, y - h * 0.05);
 }
 
 const TAP_EXPRESSIONS: Expression[] = ['happy', 'happy', 'surprised', 'pout'];
@@ -112,7 +120,7 @@ function afterGain() {
   const st = STAGES[evolved];
   const flash = document.createElement('div');
   flash.className = 'flash';
-  document.body.appendChild(flash);
+  ui.screen.appendChild(flash);
   flash.addEventListener('animationend', () => flash.remove());
   scene.setStage(evolved, true);
   showModal(`🎉 ${st.name}(으)로 성장!`, `${st.desc}\n모든 생산량 보너스가 올랐어요.`, st.img, st.room);
@@ -290,6 +298,7 @@ ui.resetBtn.addEventListener('click', () => {
 });
 
 // ---------- 시작 ----------
+setupFullscreen([ui.fullscreenBtn, ui.fullscreenBig]);
 Scene.preload();
 checkEvolve(state);
 scene.setStage(state.stage, false);

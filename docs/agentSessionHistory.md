@@ -28,4 +28,11 @@ updated_at: 2026-11-06
   - 키우기 버튼은 무대 하단 가로 바(카드 7개)로 이동, 미니 HUD 제거, 리셋 버튼은 상단 ↺
   - 세로 휴대폰은 무대가 작아 "가로로 돌리면…" 안내 표시
 - 추가: 방 돌아다니기 — 2.5~6초 쉬고 무대 폭 20~80% 사이 목적지로 총총 걸음(0.3초 통통 + 뒤뚱), 방향 따라 좌우 반전, 뒤쪽일수록 작고 높게(원근), 설정은 `WANDER` (src/data.ts)
-- 남은 작업: 밸런스 조정, 밤 시간대 색감 실제 화면 확인
+- 배포: GitHub `MyNameIsHojung/AFK_Yeonsu` (공개) main 에 push, GitHub Actions → Pages (`.github/workflows/deploy.yml`)
+  - 주소: https://mynameishojung.github.io/AFK_Yeonsu/ — vite base `/AFK_Yeonsu/` (빌드·preview), 에셋 경로는 `import.meta.env.BASE_URL`
+  - `base_img/`(원본 사진)과 `.claude/` 는 .gitignore 로 제외
+  - 저장은 브라우저 localStorage (기기·브라우저·도메인별, localhost 진행은 Pages 로 이어지지 않음)
+- 추가: 전체화면(가로) 버튼 — 상단 ⛶ 아이콘 + 세로 휴대폰용 큰 버튼 (`src/fullscreen.ts`)
+  - Fullscreen API + screen.orientation.lock('landscape') 시도 (안드로이드 크롬), 세로로 들고 있으면 `#screen` 래퍼를 CSS 90도 회전 (iPhone 대체)
+  - 회전 중 탭 좌표는 main.ts popAt 에서 무대 좌표로 변환, 아이콘 버튼 최소 28px
+- 남은 작업: 밸런스 조정, 밤 시간대 색감 실제 화면 확인, 실제 안드로이드/아이폰 기기에서 전체화면 확인
