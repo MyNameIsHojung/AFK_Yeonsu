@@ -1,6 +1,6 @@
 ---
 type: plan
-status: draft
+status: done
 updated_at: 2026-11-06
 ---
 

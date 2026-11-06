@@ -20,7 +20,7 @@ fi
 
 STYLE="Cute 2D chibi cartoon character for a mobile idle game. Big head (about 1/2 of body height), small body, thick clean dark-brown outlines, soft cel shading, warm pastel palette, full body centered, ${BG_PHRASE}, no text, no watermark, square 1:1 composition. The character must clearly resemble the person in the attached reference photos: a young Korean man with thick straight black hair and blunt straight-cut bangs covering the forehead, thick dark straight eyebrows, round soft face with full cheeks, small calm double-lidded eyes, rounded nose, small pink lips. Keep the same face design consistently across all images."
 
-declare -a NAMES=(stage1.png stage2.png stage3.png stage4.png stage5.png stage6.png expr_happy.png expr_surprised.png expr_pout.png)
+declare -a NAMES=(stage1.png stage2.png stage3.png stage4.png stage5.png stage6.png expr_happy.png expr_surprised.png expr_pout.png stage7.png stage8.png stage9.png)
 declare -a SUBJECTS=(
   'as a baby in a light-blue onesie, sitting and holding a milk bottle, happy'
   'as an elementary school kid wearing a huge yellow backpack and a cap, waving'
@@ -31,6 +31,9 @@ declare -a SUBJECTS=(
   'wearing a simple beige hoodie, big happy smile with closed eyes, blushing'
   'wearing a simple beige hoodie, surprised face with round open mouth "O"'
   'wearing a simple beige hoodie, cheeky face with pouted pursed lips'
+  'as a cute astronaut in a white and orange space suit, holding a round space helmet under one arm (face fully visible), cheerful smile'
+  'as a kind god in flowing white and gold robes with a golden halo ring floating above the head, holding a small golden staff, serene gentle smile'
+  'as a cosmic dimension traveler in a dark navy hooded cloak (hood down, face fully visible) covered with tiny stars and galaxies, cool confident smile'
 )
 
 # 단계별 표정/프레임: stageN_<key>.png
@@ -49,10 +52,18 @@ declare -a ACTS=(
   'sipping from the coffee cup held up to his mouth, eyes half closed and tired'
   'curling the dumbbell up higher with the arm fully flexed, cheeks puffed with effort'
   'raising one fist up triumphantly while the red cape flutters out to the side'
+  'floating slightly upward in zero gravity with arms and legs spread out, delighted'
+  'sprinkling sparkling golden light from one open raised hand, eyes gently closed'
+  'holding a tiny swirling galaxy floating above one open palm, looking at it with wonder'
 )
 
+# 연수 얼굴 참고 사진만 첨부 (같은 폴더의 탱이 사진은 제외)
+PET_PHOTO="F8C46FA3-26F3-4B0D-8CEC-A2B6D1BFEC8A_1_105_c.jpeg"
 BASE_REFS=()
-for f in "$ROOT"/base_img/*.jpeg; do BASE_REFS+=(-i "$f"); done
+for f in "$ROOT"/base_img/*.jpeg; do
+  [ "$(basename "$f")" = "$PET_PHOTO" ] && continue
+  BASE_REFS+=(-i "$f")
+done
 
 TARGETS=("$@")
 if [ ${#TARGETS[@]} -eq 0 ]; then
@@ -62,13 +73,13 @@ fi
 
 for target in "${TARGETS[@]}"; do
   REFS=("${BASE_REFS[@]}")
-  if [[ "$target" =~ ^stage([1-6])_act\.png$ ]]; then
+  if [[ "$target" =~ ^stage([1-9])_act\.png$ ]]; then
     n="${BASH_REMATCH[1]}"
     stage_img="$ROOT/$OUT_DIR/stage${n}.png"
     if [ ! -f "$stage_img" ]; then echo "먼저 stage${n}.png 를 생성하세요" >&2; exit 1; fi
     REFS=(-i "$stage_img" "${BASE_REFS[@]}")
     DESC="The FIRST attached image is the existing game character illustration. Redraw that exact character as the next frame of a simple idle animation: keep the identical art style, outfit, props, colors, character size, position and framing. Change only the arm/prop pose and face to: ${ACTS[$((n-1))]}. The other attached photos are the real person the character is based on, for face likeness only. ${STYLE}"
-  elif [[ "$target" =~ ^stage([1-6])_([a-z]+)\.png$ ]]; then
+  elif [[ "$target" =~ ^stage([1-9])_([a-z]+)\.png$ ]]; then
     n="${BASH_REMATCH[1]}"; e="${BASH_REMATCH[2]}"
     face=""
     for i in "${!EXPR_KEYS[@]}"; do [ "${EXPR_KEYS[$i]}" = "$e" ] && face="${EXPR_FACES[$i]}"; done

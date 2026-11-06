@@ -22,6 +22,8 @@ export interface Stage {
   room: string;
   roomTime: RoomTime;
   effects: RoomEffect[];
+  /** 캐릭터 금빛 오라 (CSS) */
+  aura?: boolean;
 }
 
 export const STAGES: Stage[] = [
@@ -38,7 +40,19 @@ export const STAGES: Stage[] = [
   { name: '헬창 연수', desc: '3대 500을 향하여', threshold: 5_000_000, img: `${ART}/stage5.png`, room: `${BG}/room5.png`, roomTime: 'day', effects: [] },
   {
     name: '전설의 연수', desc: '모두가 우러러보는 그 이름', threshold: 100_000_000, img: `${ART}/stage6.png`, room: `${BG}/room6.png`, roomTime: 'night',
+    effects: [{ kind: 'sparkle' }], aura: true,
+  },
+  {
+    name: '우주 연수', desc: '지구가 내 방 창문 밖에', threshold: 3_000_000_000, img: `${ART}/stage7.png`, room: `${BG}/room7.png`, roomTime: 'night',
     effects: [{ kind: 'sparkle' }],
+  },
+  {
+    name: '연수신', desc: '구름 위에서 세상을 보살펴요', threshold: 100_000_000_000, img: `${ART}/stage8.png`, room: `${BG}/room8.png`, roomTime: 'day',
+    effects: [{ kind: 'sparkle' }], aura: true,
+  },
+  {
+    name: '차원을 넘은 연수', desc: '은하 하나쯤은 손바닥 위에', threshold: 3_000_000_000_000, img: `${ART}/stage9.png`, room: `${BG}/room9.png`, roomTime: 'night',
+    effects: [{ kind: 'sparkle' }], aura: true,
   },
 ];
 

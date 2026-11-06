@@ -90,7 +90,7 @@ export class Scene {
     this.show('idle');
     this.restartIdle();
 
-    this.els.charWrap.classList.toggle('aura', st.effects.some((e) => e.kind === 'sparkle'));
+    this.els.charWrap.classList.toggle('aura', !!st.aura);
     if (animate) {
       this.els.charWrap.classList.remove('jump');
       void this.els.charWrap.offsetWidth;

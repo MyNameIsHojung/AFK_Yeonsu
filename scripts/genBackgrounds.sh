@@ -13,7 +13,7 @@ STYLE_REF="$ROOT/public/assets/yeonsu/stage1.png"
 
 STYLE='Background illustration for a cute 2D chibi cartoon mobile idle game, matching the art style of the attached character illustration: thick clean dark-brown outlines, soft cel shading, warm cozy pastel palette. A cozy room INSIDE A HOME, front view at eye level, slightly wide angle, the floor visible in the lower third. IMPORTANT: leave a large EMPTY open floor area in the lower-center of the image (no furniture, no objects there) so a character can be placed standing there later. No people, no characters, no animals, no text, no letters, no watermark. Square 1:1 composition.'
 
-declare -a NAMES=(room1.png room2.png room3.png room4.png room5.png room6.png)
+declare -a NAMES=(room1.png room2.png room3.png room4.png room5.png room6.png room7.png room8.png room9.png)
 declare -a SUBJECTS=(
   'A baby nursery room in daytime: white wooden crib on one side with a hanging star mobile above it, soft pastel-blue walls with cloud wallpaper, a colorful play mat, stuffed toys and wooden blocks along the walls, a window with sunlight and light curtains.'
   'An elementary school kid bedroom in the afternoon: wooden bunk bed on one side, a toy box with robots and balls, a small desk with crayons and drawings taped on the wall, a world map poster, a window with sunny sky.'
@@ -21,6 +21,9 @@ declare -a SUBJECTS=(
   'A small single-person studio apartment of a tired office worker in the evening: a small sofa, a low table with a cup of instant noodles and a laptop, a clothes drying rack with shirts, a small fridge, a window with evening city lights.'
   'A living room converted into a home gym: a dumbbell rack, a barbell on a stand, a yoga mat, a protein shaker on a shelf, motivational posters without text, a big mirror on the wall, bright daylight from a window.'
   'A luxurious penthouse living room at night: a crystal chandelier, a trophy display cabinet with golden trophies, a red velvet sofa, a floor-to-ceiling window showing a sparkling city skyline at night, golden accents.'
+  'A cozy private living cabin inside a space station: a large round window showing planet Earth and stars, a small bed strapped to the wall, plush toys and a water pouch floating in the air, soft white and light-blue panels with warm little lights, a flat floor.'
+  'A heavenly living room high above the clouds: white and gold marble pillars, a fluffy cloud-shaped sofa, a golden harp, soft clouds drifting around the floor edges, warm glowing pastel pink and gold sky light, a smooth flat floor.'
+  'A mysterious dimension room: a galaxy and swirling purple and teal nebula flowing across the walls and ceiling, a chair, books and a lamp floating in the air, a glowing portal ring on the back wall, a smooth glowing translucent floor.'
 )
 
 TARGETS=("$@")
