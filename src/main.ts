@@ -2,6 +2,7 @@ import './style.css';
 import { EVENT, GENERATORS, STAGES, TAP_UPGRADE, type Expression } from './data';
 import { Scene } from './scene';
 import { isRotated, setupFullscreen } from './fullscreen';
+import { setupAutoUpdate } from './update';
 import { fmt, fmtDuration } from './format';
 import {
   buyGenerator,
@@ -299,6 +300,7 @@ ui.resetBtn.addEventListener('click', () => {
 
 // ---------- 시작 ----------
 setupFullscreen([ui.fullscreenBtn, ui.fullscreenBig]);
+setupAutoUpdate();
 Scene.preload();
 checkEvolve(state);
 scene.setStage(state.stage, false);

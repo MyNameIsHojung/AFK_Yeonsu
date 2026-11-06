@@ -35,4 +35,6 @@ updated_at: 2026-11-06
 - 추가: 전체화면(가로) 버튼 — 상단 ⛶ 아이콘 + 세로 휴대폰용 큰 버튼 (`src/fullscreen.ts`)
   - Fullscreen API + screen.orientation.lock('landscape') 시도 (안드로이드 크롬), 세로로 들고 있으면 `#screen` 래퍼를 CSS 90도 회전 (iPhone 대체)
   - 회전 중 탭 좌표는 main.ts popAt 에서 무대 좌표로 변환, 아이콘 버튼 최소 28px
+- 추가: 새 버전 자동 감지 (`src/update.ts`) — Pages 가 HTML 을 10분 캐시(max-age=600)해 배포 후 폰에서 예전 화면이 뜨던 문제
+  - 빌드 ID 를 앱(`__BUILD_ID__`)과 `dist/version.json` 에 넣고, 시작/탭 복귀/5분마다 비교 → 다르면 `?v=빌드ID` 로 다시 열어 캐시 우회 (같은 버전 재시도 방지 가드)
 - 남은 작업: 밸런스 조정, 밤 시간대 색감 실제 화면 확인, 실제 안드로이드/아이폰 기기에서 전체화면 확인
